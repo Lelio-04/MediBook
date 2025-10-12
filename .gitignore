@@ -1,0 +1,19 @@
+# ==========================
+# FILE TEMPORANEI DI OFFICE
+# ==========================
+~$*.docx
+~$*.xlsx
+~$*.pptx
+
+# ==========================
+# FILE DI SISTEMA / IDE
+# ==========================
+.DS_Store
+Thumbs.db
+
+# ==========================
+# FILE DI COMPILAZIONE / CACHE
+# ==========================
+*.log
+*.tmp
+*.cache
