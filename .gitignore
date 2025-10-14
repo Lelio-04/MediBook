@@ -4,6 +4,7 @@
 ~$*.docx
 ~$*.xlsx
 ~$*.pptx
+~$*.doc
 
 # ==========================
 # FILE DI SISTEMA / IDE
