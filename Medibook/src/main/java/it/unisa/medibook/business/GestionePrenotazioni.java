@@ -80,6 +80,12 @@ public class GestionePrenotazioni {
         return prenotazioneRepository.findByMedicoId(medicoId);
     }
 
-
+    /**     NUOVO
+     * 4. Funzionalità Paziente: Visualizza storico visite.
+     * Restituisce la lista delle prenotazioni di un paziente specifico.
+     */
+    public List<Prenotazione> visualizzaVisitePaziente(Integer pazienteId) {
+        return prenotazioneRepository.findByPazienteId(pazienteId);
+    }
 
 }

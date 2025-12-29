@@ -13,6 +13,9 @@ public interface PrenotazioneRepository extends JpaRepository<Prenotazione, Inte
     // Corrisponde a doRetrieveByMedico nel tuo ODD [cite: 137]
     List<Prenotazione> findByMedicoId(Integer medicoId);
 
+    // Serve per trovare le visite di un paziente       NUOVO
+    List<Prenotazione> findByPazienteId(Integer pazienteId);
+
     // Query per verificare sovrapposizioni (TCS Req: Slot Occupato)
     boolean existsByMedicoIdAndDataAndOraAndIdNot(Integer medicoId, LocalDate data, LocalTime ora, Integer idDaEscludere);
 }

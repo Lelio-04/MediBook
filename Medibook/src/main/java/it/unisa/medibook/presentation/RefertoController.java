@@ -15,7 +15,7 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/referti")
 @CrossOrigin(origins = "http://localhost:3000") // Abilita il Frontend React
-public class RefertoService {
+public class RefertoController {
 
     @Autowired
     private GestioneReferti gestioneReferti;

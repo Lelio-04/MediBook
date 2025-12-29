@@ -14,7 +14,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/prenotazioni")
 @CrossOrigin(origins = "http://localhost:3000")
-public class PrenotazioneService {
+public class PrenotazioneController {
 
     @Autowired
     private GestionePrenotazioni gestionePrenotazioni;
@@ -60,6 +60,16 @@ public class PrenotazioneService {
     @GetMapping("/medico/{idMedico}")
     public ResponseEntity<List<Prenotazione>> getVisiteMedico(@PathVariable Integer idMedico) {
         List<Prenotazione> visite = gestionePrenotazioni.visualizzaVisiteMedico(idMedico);
+        return ResponseEntity.ok(visite);
+    }
+
+    //NUOVO
+    // 4. PAZIENTE: Visualizza storico visite
+    // Endpoint: GET /api/prenotazioni/paziente/{idPaziente}
+    @GetMapping("/paziente/{idPaziente}")
+    public ResponseEntity<List<Prenotazione>> getVisitePaziente(@PathVariable Integer idPaziente) {
+        // Chiama il metodo di business
+        List<Prenotazione> visite = gestionePrenotazioni.visualizzaVisitePaziente(idPaziente);
         return ResponseEntity.ok(visite);
     }
 }

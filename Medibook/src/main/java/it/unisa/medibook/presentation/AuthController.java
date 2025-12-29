@@ -11,7 +11,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = "http://localhost:3000") // Permette a React di chiamare questo backend
-public class AuthService {
+public class AuthController {
 
     @Autowired
     private GestioneUtenza gestioneUtenza;
