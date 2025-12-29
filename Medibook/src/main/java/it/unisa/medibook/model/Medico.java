@@ -35,4 +35,12 @@ public class Medico extends Utente {
     public void setNumeroAlbo(String numeroAlbo) {
         this.numeroAlbo = numeroAlbo;
     }
+
+    @Override
+    public String toString() {
+        return "Medico{" +
+                "specializzazione='" + specializzazione + '\'' +
+                ", numeroAlbo='" + numeroAlbo + '\'' +
+                '}';
+    }
 }
