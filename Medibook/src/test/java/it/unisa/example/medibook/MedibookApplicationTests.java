@@ -1,4 +1,4 @@
-package com.example.medibook;
+package it.unisa.example.medibook;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
