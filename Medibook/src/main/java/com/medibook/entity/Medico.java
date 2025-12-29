@@ -83,7 +83,7 @@ public class Medico implements Serializable {
                 ", nome='" + nome + '\'' +
                 ", cognome='" + cognome + '\'' +
                 ", email='" + email + '\'' +
-                ", cassword='" + password + '\'' +
+                ", password='" + password + '\'' +
                 '}';
     }
 }
