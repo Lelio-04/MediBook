@@ -1,4 +1,4 @@
-package it.unisa.medibook.main;
+package it.unisa.medibook;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
