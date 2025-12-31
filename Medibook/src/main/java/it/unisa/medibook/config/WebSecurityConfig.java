@@ -33,15 +33,15 @@ public class WebSecurityConfig {
         return http.build();
     }
 
-    // Configurazione esplicita per dire "Sì, accetta localhost:3000"
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         // Permetti al frontend React di accedere
         configuration.setAllowedOrigins(List.of("http://localhost:3000"));
-        // Permetti i metodi GET, POST, PUT, DELETE, OPTIONS
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        // Permetti tutti gli header
+
+        // --- MODIFICA QUESTA RIGA AGGIUNGENDO "PATCH" ---
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
 
