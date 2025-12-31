@@ -14,7 +14,7 @@ public class GestioneUtenza {
     private UtenteRepository utenteRepository;
 
     /**
-     * Effettua il login verificando email e password.
+     * Effettuv il login verificando email e password.
      * Corrisponde all'operazione login() definita nell'ODD[cite: 198].
      */
     public Utente login(String email, String password) {
