@@ -114,7 +114,7 @@ const styles = {
     container: { padding: '20px', fontFamily: 'Arial, sans-serif' },
     header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #eee', paddingBottom: '10px' },
     logoutBtn: { backgroundColor: '#dc3545', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer' },
-    content: { marginTop: '20px' },
+    content: { marginTop: '21px' },
     table: { width: '100%', borderCollapse: 'collapse', marginTop: '10px' },
     th: { textAlign: 'left', padding: '12px', borderBottom: '2px solid #ddd' },
     td: { padding: '12px' },
