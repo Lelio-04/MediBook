@@ -1,6 +1,8 @@
 package it.unisa.medibook.modelService;
 
+import it.unisa.medibook.model.Paziente; // <--- Importante: Importa la classe Paziente
 import it.unisa.medibook.model.Utente;
+import it.unisa.medibook.modelStorage.PazienteRepository; // <--- Importante: Repository specifico
 import it.unisa.medibook.modelStorage.UtenteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -13,20 +15,36 @@ public class GestioneUtenza {
     @Autowired
     private UtenteRepository utenteRepository;
 
+    @Autowired
+    private PazienteRepository pazienteRepository; // <--- AGGIUNTA 1: Ci serve per salvare i pazienti
+
     /**
-     * Effettuv il login verificando email e password.
-     * Corrisponde all'operazione login() definita nell'ODD[cite: 198].
+     * Effettua il login verificando email e password.
      */
     public Utente login(String email, String password) {
-        // Cerca l'utente nel DB tramite email
         Optional<Utente> utente = utenteRepository.findByEmail(email);
 
-        // Se l'utente esiste e la password coincide
         if (utente.isPresent() && utente.get().getPassword().equals(password)) {
             return utente.get();
         }
-
-        // Se le credenziali sono errate
         return null;
+    }
+
+    /**
+     * AGGIUNTA 2: Metodo per registrare un nuovo paziente.
+     * Imposta il ruolo fisso e salva nel DB.
+     */
+    public void registraPaziente(Paziente p) throws Exception {
+        // Controllo se l'email esiste già (per sicurezza)
+        Optional<Utente> esistente = utenteRepository.findByEmail(p.getEmail());
+        if (esistente.isPresent()) {
+            throw new Exception("Email già presente nel sistema.");
+        }
+
+        // Assegno forzatamente il ruolo "PAZIENTE" (così nessuno può registrarsi come medico da qui)
+        p.setRuolo("PAZIENTE");
+
+        // Salvo nel database (JPA riempirà sia la tabella 'utente' che 'paziente')
+        pazienteRepository.save(p);
     }
 }
