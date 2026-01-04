@@ -1,11 +1,11 @@
-package it.unisa.medibook.business;
+package it.unisa.medibook.modelService;
 
 import it.unisa.medibook.model.Medico;
 import it.unisa.medibook.model.Paziente;
 import it.unisa.medibook.model.Prenotazione;
-import it.unisa.medibook.storage.MedicoRepository;
-import it.unisa.medibook.storage.PazienteRepository;
-import it.unisa.medibook.storage.PrenotazioneRepository;
+import it.unisa.medibook.modelStorage.MedicoRepository;
+import it.unisa.medibook.modelStorage.PazienteRepository;
+import it.unisa.medibook.modelStorage.PrenotazioneRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 

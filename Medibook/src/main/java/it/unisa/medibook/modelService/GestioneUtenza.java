@@ -1,7 +1,7 @@
-package it.unisa.medibook.business;
+package it.unisa.medibook.modelService;
 
 import it.unisa.medibook.model.Utente;
-import it.unisa.medibook.storage.UtenteRepository;
+import it.unisa.medibook.modelStorage.UtenteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 

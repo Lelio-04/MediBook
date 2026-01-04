@@ -1,4 +1,4 @@
-package it.unisa.medibook.storage;
+package it.unisa.medibook.modelStorage;
 
 import it.unisa.medibook.model.Prenotazione;
 import org.springframework.data.jpa.repository.JpaRepository;

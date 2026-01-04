@@ -1,8 +1,8 @@
-package it.unisa.medibook.business;
+package it.unisa.medibook.modelService;
 
 import it.unisa.medibook.model.Prenotazione;
 import it.unisa.medibook.model.Referto;
-import it.unisa.medibook.storage.RefertoRepository;
+import it.unisa.medibook.modelStorage.RefertoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
