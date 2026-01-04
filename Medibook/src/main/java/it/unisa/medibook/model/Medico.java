@@ -7,6 +7,12 @@ import jakarta.persistence.*;
 public class Medico extends Utente {
 
     @Column(nullable = false)
+    private String nome;     // <--- AGGIUNTO
+
+    @Column(nullable = false)
+    private String cognome;  // <--- AGGIUNTO
+
+    @Column(nullable = false)
     private String specializzazione;
 
     @Column(nullable = false)
@@ -19,6 +25,22 @@ public class Medico extends Utente {
     }
 
     // --- Getter e Setter ---
+
+    public String getNome() {
+        return nome;
+    }
+
+    public void setNome(String nome) {
+        this.nome = nome;
+    }
+
+    public String getCognome() {
+        return cognome;
+    }
+
+    public void setCognome(String cognome) {
+        this.cognome = cognome;
+    }
 
     public String getSpecializzazione() {
         return specializzazione;
@@ -39,7 +61,9 @@ public class Medico extends Utente {
     @Override
     public String toString() {
         return "Medico{" +
-                "specializzazione='" + specializzazione + '\'' +
+                "nome='" + nome + '\'' +
+                ", cognome='" + cognome + '\'' +
+                ", specializzazione='" + specializzazione + '\'' +
                 ", numeroAlbo='" + numeroAlbo + '\'' +
                 '}';
     }

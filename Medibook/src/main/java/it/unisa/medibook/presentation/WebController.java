@@ -2,19 +2,22 @@ package it.unisa.medibook.presentation;
 
 import it.unisa.medibook.business.GestionePrenotazioni;
 import it.unisa.medibook.business.GestioneUtenza;
+import it.unisa.medibook.model.Medico;
+import it.unisa.medibook.model.Paziente;
 import it.unisa.medibook.model.Prenotazione;
 import it.unisa.medibook.model.Utente;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller; // Nota: NON RestController
+import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.util.List;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 @Controller
 public class WebController {
@@ -25,13 +28,15 @@ public class WebController {
     @Autowired
     private GestionePrenotazioni gestionePrenotazioni;
 
-    // 1. Mostra la pagina di Login
+    // ==========================================
+    // SEZIONE 1: LOGIN E LOGOUT
+    // ==========================================
+
     @GetMapping("/")
     public String showLogin() {
         return "login"; // Cerca /WEB-INF/jsp/login.jsp
     }
 
-    // 2. Gestisce il form di Login
     @PostMapping("/login")
     public String performLogin(@RequestParam String email,
                                @RequestParam String password,
@@ -41,22 +46,34 @@ public class WebController {
         Utente utente = gestioneUtenza.login(email, password);
 
         if (utente != null) {
-            // Salva l'utente in sessione
+            // Salva l'utente generico in sessione
             session.setAttribute("utente", utente);
 
+            // Reindirizzamento in base al Ruolo
             if ("MEDICO".equals(utente.getRuolo())) {
-                return "redirect:/medico"; // Va alla rotta /medico
+                return "redirect:/medico";
             } else if ("SEGRETERIA".equals(utente.getRuolo())) {
                 return "redirect:/segreteria";
+            } else if ("PAZIENTE".equals(utente.getRuolo())) {
+                return "redirect:/paziente";
             }
         }
 
-        // Se login fallito:
+        // Se login fallito
         model.addAttribute("errore", "Credenziali non valide!");
         return "login";
     }
 
-    // 3. Pagina Dashboard Medico
+    @GetMapping("/logout")
+    public String logout(HttpSession session) {
+        session.invalidate(); // Distrugge la sessione
+        return "redirect:/";  // Torna al login
+    }
+
+    // ==========================================
+    // SEZIONE 2: AREA MEDICO
+    // ==========================================
+
     @GetMapping("/medico")
     public String dashboardMedico(HttpSession session, Model model) {
         Utente utente = (Utente) session.getAttribute("utente");
@@ -66,52 +83,114 @@ public class WebController {
             return "redirect:/";
         }
 
-        // Carico le visite dal DB e le passo alla JSP
-        List<Prenotazione> visite = gestionePrenotazioni.visualizzaVisiteMedico(utente.getId());
-        model.addAttribute("visite", visite);
-        model.addAttribute("emailMedico", utente.getEmail());
+        // CASTING: Trasformiamo l'Utente generico in Medico per leggere il cognome
+        if (utente instanceof Medico) {
+            Medico medico = (Medico) utente;
+            model.addAttribute("nomeMedico", medico.getCognome());
+            // Passiamo l'ID corretto
+            List<Prenotazione> visite = gestionePrenotazioni.visualizzaVisiteMedico(medico.getId());
+            model.addAttribute("visite", visite);
+        }
 
-        return "medico"; // Cerca /WEB-INF/jsp/medico.jsp
+        return "medico";
     }
 
-    // 4. Azione cambio stato (chiamata dal bottone nella JSP)
     @PostMapping("/medico/cambiaStato")
     public String cambiaStato(@RequestParam Integer id, @RequestParam String stato) {
         gestionePrenotazioni.aggiornaStatoVisita(id, stato);
-        return "redirect:/medico"; // Ricarica la pagina aggiornata
+        return "redirect:/medico";
     }
 
+    // ==========================================
+    // SEZIONE 3: AREA SEGRETERIA
+    // ==========================================
 
-    // 5. Dashboard Segreteria (GET)
     @GetMapping("/segreteria")
     public String dashboardSegreteria(HttpSession session, Model model) {
         Utente utente = (Utente) session.getAttribute("utente");
 
-        // Controllo di sicurezza: solo SEGRETERIA può entrare
         if (utente == null || !"SEGRETERIA".equals(utente.getRuolo())) {
             return "redirect:/";
         }
 
-        // Per semplicità, mostriamo l'agenda del Dott. Rossi (ID 1), come abbiamo fatto prima.
-        // In un progetto reale potresti fare una findAll() o selezionare il medico.
+        // Visualizza agenda del Dott. Rossi (ID 1) come esempio
         List<Prenotazione> visite = gestionePrenotazioni.visualizzaVisiteMedico(1);
         model.addAttribute("visite", visite);
 
-        return "segreteria"; // Cerca /WEB-INF/jsp/segreteria.jsp
+        return "segreteria";
     }
 
-    // 6. Azione Modifica Data/Ora (POST)
     @PostMapping("/segreteria/modifica")
     public String modificaPrenotazione(@RequestParam Integer id,
                                        @RequestParam String data,
-                                       @RequestParam String ora) throws Exception {
+                                       @RequestParam String ora,
+                                       RedirectAttributes redirectAttributes) {
+        try {
+            LocalDate dataL = LocalDate.parse(data);
+            LocalTime oraL = LocalTime.parse(ora);
 
-        // Convertiamo le stringhe ricevute dal form HTML in oggetti Java
-        LocalDate dataL = LocalDate.parse(data);
-        LocalTime oraL = LocalTime.parse(ora);
+            gestionePrenotazioni.modificaPrenotazione(id, dataL, oraL);
 
-        gestionePrenotazioni.modificaPrenotazione(id, dataL, oraL);
+        } catch (Exception e) {
+            System.out.println("Errore modifica: " + e.getMessage());
+        }
 
-        return "redirect:/segreteria"; // Ricarica la pagina per vedere le modifiche
+        return "redirect:/segreteria";
+    }
+
+    // ==========================================
+    // SEZIONE 4: AREA PAZIENTE
+    // ==========================================
+
+    @GetMapping("/paziente")
+    public String dashboardPaziente(HttpSession session, Model model) {
+        Utente utente = (Utente) session.getAttribute("utente");
+
+        // Controllo Sicurezza
+        if (utente == null || !"PAZIENTE".equals(utente.getRuolo())) {
+            return "redirect:/";
+        }
+
+        // --- CASTING FONDAMENTALE (Risolve il tuo errore) ---
+        // Verifichiamo che sia davvero un Paziente e facciamo il cast
+        if (utente instanceof Paziente) {
+            Paziente paziente = (Paziente) utente;
+
+            // Ora possiamo chiamare getNome() perché la variabile è di tipo Paziente
+            model.addAttribute("nomePaziente", paziente.getNome() + " " + paziente.getCognome());
+
+            // Carica lo storico usando l'ID del paziente
+            model.addAttribute("storicoVisite", gestionePrenotazioni.visualizzaVisitePaziente(paziente.getId()));
+        }
+
+        // Carica la lista dei medici per il menu a tendina
+        model.addAttribute("listaMedici", gestionePrenotazioni.dammiTuttiIMedici());
+
+        return "paziente";
+    }
+
+    @PostMapping("/paziente/prenota")
+    public String prenotaVisita(@RequestParam Integer idMedico,
+                                @RequestParam String data,
+                                @RequestParam String ora,
+                                HttpSession session,
+                                RedirectAttributes redirectAttributes) {
+
+        Utente utente = (Utente) session.getAttribute("utente");
+
+        try {
+            LocalDate dataL = LocalDate.parse(data);
+            LocalTime oraL = LocalTime.parse(ora);
+
+            gestionePrenotazioni.nuovaPrenotazione(utente.getId(), idMedico, dataL, oraL);
+
+            // Se va bene, aggiunge parametro di successo
+            redirectAttributes.addAttribute("success", "true");
+
+        } catch (Exception e) {
+            System.out.println("Errore prenotazione: " + e.getMessage());
+        }
+
+        return "redirect:/paziente";
     }
 }
