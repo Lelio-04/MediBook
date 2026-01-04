@@ -17,10 +17,7 @@ Progetto realizzato per il corso di Ingegneria del Software - Università degli 
 * **Maven**
 
 ### Frontend
-* **React.js**
-* **Node.js** & **NPM**
-* **Axios** (Client HTTP)
-* **React Router Dom**
+* **JavaScript**
 
 ### Database
 * **MySQL 8.0**
