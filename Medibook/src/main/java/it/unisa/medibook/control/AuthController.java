@@ -1,6 +1,6 @@
 package it.unisa.medibook.control;
 
-import it.unisa.medibook.model.Paziente; // <--- Importante: Serve per creare il nuovo paziente
+import it.unisa.medibook.model.Paziente;
 import it.unisa.medibook.modelService.GestioneUtenza;
 import it.unisa.medibook.model.Utente;
 import jakarta.servlet.http.HttpSession;
@@ -32,14 +32,22 @@ public class AuthController {
     @PostMapping("/login")
     public String performLogin(@RequestParam String email,
                                @RequestParam String password,
+                               @RequestParam(required = false) String redirect, // <--- 1. Parametro opzionale aggiunto
                                HttpSession session,
                                Model model) {
+
         Utente utente = gestioneUtenza.login(email, password);
 
         if (utente != null) {
             session.setAttribute("utente", utente);
 
-            // Reindirizzamento in base al ruolo
+            // --- 2. LOGICA DEL REDIRECT ---
+            // Se c'è un indirizzo "in memoria" (es. prenotazione interrotta), andiamo lì.
+            if (redirect != null && !redirect.trim().isEmpty()) {
+                return "redirect:" + redirect;
+            }
+
+            // Altrimenti, comportamento standard in base al ruolo
             if ("MEDICO".equals(utente.getRuolo())) {
                 return "redirect:/medico";
             } else if ("SEGRETERIA".equals(utente.getRuolo())) {
@@ -50,6 +58,12 @@ public class AuthController {
         }
 
         model.addAttribute("errore", "Credenziali non valide!");
+        // Se il login fallisce, rimandiamo indietro anche il parametro redirect
+        // così l'utente non lo perde al secondo tentativo
+        if (redirect != null) {
+            model.addAttribute("redirect", redirect);
+        }
+
         return "login";
     }
 
@@ -59,15 +73,13 @@ public class AuthController {
         return "redirect:/";
     }
 
-    // --- NUOVA PARTE: REGISTRAZIONE ---
+    // --- REGISTRAZIONE ---
 
-    // 1. Mostra il modulo di registrazione
     @GetMapping("/registrazione")
     public String showRegister() {
-        return "registrazione"; // Cerca il file registrazione.jsp
+        return "registrazione";
     }
 
-    // 2. Riceve i dati dal form HTML e crea l'utente
     @PostMapping("/registrazione")
     public String performRegister(
             @RequestParam String nome,
@@ -78,7 +90,6 @@ public class AuthController {
             @RequestParam String password,
             Model model) {
 
-        // Creiamo l'oggetto Paziente con i dati ricevuti
         Paziente p = new Paziente();
         p.setNome(nome);
         p.setCognome(cognome);
@@ -88,15 +99,11 @@ public class AuthController {
         p.setPassword(password);
 
         try {
-            // Proviamo a salvare tramite il Service
             gestioneUtenza.registraPaziente(p);
-
-            // Se va bene, mandiamo l'utente al login con un messaggio verde
             model.addAttribute("messaggio", "Registrazione completata! Ora puoi accedere.");
             return "login";
 
         } catch (Exception e) {
-            // Se c'è un errore (es. email duplicata), ricarichiamo la pagina di registrazione con l'errore rosso
             model.addAttribute("errore", "Errore: " + e.getMessage());
             return "registrazione";
         }

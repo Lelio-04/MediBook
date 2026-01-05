@@ -27,7 +27,6 @@ Progetto realizzato per il corso di Ingegneria del Software - Università degli 
 ## 🛠️ Prerequisiti
 
 * **Java JDK 17** o superiore
-* **Node.js** (Versione LTS)
 * **MySQL Server**
 * **IntelliJ IDEA** (Consigliato)
 

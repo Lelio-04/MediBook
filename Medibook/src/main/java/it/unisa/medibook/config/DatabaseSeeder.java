@@ -1,13 +1,7 @@
 package it.unisa.medibook.config;
 
-import it.unisa.medibook.model.Medico;
-import it.unisa.medibook.model.Paziente;
-import it.unisa.medibook.model.Prenotazione;
-import it.unisa.medibook.model.Utente;
-import it.unisa.medibook.modelStorage.MedicoRepository;
-import it.unisa.medibook.modelStorage.PazienteRepository;
-import it.unisa.medibook.modelStorage.PrenotazioneRepository;
-import it.unisa.medibook.modelStorage.UtenteRepository;
+import it.unisa.medibook.model.*;
+import it.unisa.medibook.modelStorage.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -27,9 +21,13 @@ public class DatabaseSeeder implements CommandLineRunner {
     @Autowired
     private PrenotazioneRepository prenotazioneRepository;
 
+    // AGGIUNTA: Serve per salvare correttamente l'entità Segreteria
+    @Autowired
+    private SegreteriaRepository segreteriaRepository;
+
     @Override
     public void run(String... args) throws Exception {
-        // Se ci sono già utenti, non fare nulla (evita duplicati al riavvio)
+        // Controllo se esiste già almeno un utente per evitare duplicati
         if (utenteRepository.count() > 0) {
             return;
         }
@@ -41,7 +39,6 @@ public class DatabaseSeeder implements CommandLineRunner {
         medico.setEmail("rossi@medibook.it");
         medico.setPassword("password");
         medico.setRuolo("MEDICO");
-        // NUOVI CAMPI OBBLIGATORI
         medico.setNome("Mario");
         medico.setCognome("Rossi");
         medico.setSpecializzazione("Cardiologia");
@@ -49,12 +46,27 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         medicoRepository.save(medico);
 
-        // 2. CREAZIONE SEGRETERIA
-        Utente segreteria = new Utente();
+        // 2. CREAZIONE MEDICO
+        Medico medico2 = new Medico();
+        medico2.setEmail("verdi@medibook.it");
+        medico2.setPassword("password");
+        medico2.setRuolo("MEDICO");
+        medico2.setNome("Flavio");
+        medico2.setCognome("Verdi");
+        medico2.setSpecializzazione("Oncologia");
+        medico2.setNumeroAlbo("12345");
+
+        medicoRepository.save(medico2);
+
+        // 2. CREAZIONE SEGRETERIA (Corretto: uso la classe specifica)
+        Segreteria segreteria = new Segreteria();
         segreteria.setEmail("segreteria@medibook.it");
         segreteria.setPassword("admin");
         segreteria.setRuolo("SEGRETERIA");
-        utenteRepository.save(segreteria);
+        // Se Segreteria non ha campi extra, basta questo.
+        // JPA riempirà tabella 'utente' e tabella 'segreteria'.
+
+        segreteriaRepository.save(segreteria);
 
         // 3. CREAZIONE PAZIENTE
         Paziente paziente = new Paziente();
@@ -65,6 +77,7 @@ public class DatabaseSeeder implements CommandLineRunner {
         paziente.setCognome("Verdi");
         paziente.setCodiceFiscale("VRDLCU80A01H501U");
         paziente.setTelefono("3331234567");
+
         pazienteRepository.save(paziente);
 
         // 4. CREAZIONE PRENOTAZIONE DI PROVA
@@ -74,6 +87,7 @@ public class DatabaseSeeder implements CommandLineRunner {
         p1.setData(LocalDate.now().plusDays(1)); // Domani
         p1.setOra(LocalTime.of(10, 0));
         p1.setStato("DA_CONFERMARE");
+
         prenotazioneRepository.save(p1);
 
         System.out.println("--- Dati inseriti correttamente ---");

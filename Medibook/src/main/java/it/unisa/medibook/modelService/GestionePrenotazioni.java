@@ -111,7 +111,7 @@ public class GestionePrenotazioni {
 
         // Recupero le entità
         Optional<Paziente> pazienteOpt = pazienteRepository.findById(pazienteId);
-        Optional<Medico> medicoOpt = medicoRepository.findById(medicoId);
+        Optional<Medico> medicoOpt = medicoRepository.findById(Long.valueOf(medicoId));
 
         if (pazienteOpt.isPresent() && medicoOpt.isPresent()) {
             Prenotazione p = new Prenotazione();
