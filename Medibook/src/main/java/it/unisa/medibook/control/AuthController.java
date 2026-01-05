@@ -17,22 +17,25 @@ public class AuthController {
     @Autowired
     private GestioneUtenza gestioneUtenza;
 
-    // --- HOME PAGE E LOGIN ---
-
     @GetMapping("/")
     public String showHome() {
         return "home";
     }
 
     @GetMapping("/accedi")
-    public String showLogin() {
+    public String showLogin(@RequestParam(required = false) String redirect,
+                            @RequestParam(required = false) String cerca, // Manteniamo il parametro ricerca
+                            Model model) {
+        model.addAttribute("redirect", redirect);
+        model.addAttribute("cerca", cerca);
         return "login";
     }
 
     @PostMapping("/login")
     public String performLogin(@RequestParam String email,
                                @RequestParam String password,
-                               @RequestParam(required = false) String redirect, // <--- 1. Parametro opzionale aggiunto
+                               @RequestParam(required = false) String redirect,
+                               @RequestParam(required = false) String cerca,
                                HttpSession session,
                                Model model) {
 
@@ -40,36 +43,45 @@ public class AuthController {
 
         if (utente != null) {
             session.setAttribute("utente", utente);
+            String ruolo = utente.getRuolo().toUpperCase();
 
-            // --- 2. LOGICA DEL REDIRECT ---
-            // Se c'è un indirizzo "in memoria" (es. prenotazione interrotta), andiamo lì.
-            if (redirect != null && !redirect.trim().isEmpty()) {
-                return "redirect:" + redirect;
+            // --- LOGICA DI REINDIRIZZAMENTO FILTRATA ---
+
+            // 1. Se c'è un redirect (es. dalla ricerca), lo seguiamo SOLO se l'utente è un PAZIENTE
+            if (redirect != null && !redirect.trim().isEmpty() && !redirect.equals("null")) {
+                if ("PAZIENTE".equals(ruolo)) {
+                    return "redirect:" + redirect;
+                }
+                // Se NON è un paziente (è medico/segreteria), ignoriamo il redirect della ricerca
+                // e proseguiamo sotto verso la loro dashboard naturale.
             }
 
-            // Altrimenti, comportamento standard in base al ruolo
-            if ("MEDICO".equals(utente.getRuolo())) {
-                return "redirect:/medico";
-            } else if ("SEGRETERIA".equals(utente.getRuolo())) {
-                return "redirect:/segreteria";
-            } else if ("PAZIENTE".equals(utente.getRuolo())) {
-                return "redirect:/paziente";
+            // 2. Smistamento forzato in base al ruolo (Pattern Strategy)
+            switch (ruolo) {
+                case "MEDICO":
+                    return "redirect:/medico";
+                case "SEGRETERIA":
+                    return "redirect:/segreteria";
+                case "PAZIENTE":
+                    // Se è un paziente e non c'era un redirect specifico, mandalo alla sua area
+                    String queryCerca = (cerca != null && !cerca.isEmpty()) ? "?cerca=" + cerca : "";
+                    return "redirect:/paziente" + queryCerca;
+                default:
+                    return "redirect:/";
             }
         }
 
         model.addAttribute("errore", "Credenziali non valide!");
-        // Se il login fallisce, rimandiamo indietro anche il parametro redirect
-        // così l'utente non lo perde al secondo tentativo
-        if (redirect != null) {
-            model.addAttribute("redirect", redirect);
-        }
-
+        model.addAttribute("redirect", redirect);
+        model.addAttribute("cerca", cerca);
         return "login";
     }
 
     @GetMapping("/logout")
     public String logout(HttpSession session) {
+        // Rimuove i dati e invalida la sessione
         session.invalidate();
+        // Reindirizza alla home page pulita
         return "redirect:/";
     }
 
@@ -102,7 +114,6 @@ public class AuthController {
             gestioneUtenza.registraPaziente(p);
             model.addAttribute("messaggio", "Registrazione completata! Ora puoi accedere.");
             return "login";
-
         } catch (Exception e) {
             model.addAttribute("errore", "Errore: " + e.getMessage());
             return "registrazione";
