@@ -40,6 +40,53 @@
         .section-title.primary { color: #007bff; border-color: #007bff; }
         .section-title.secondary { color: #6c757d; border-color: #6c757d; }
 
+        /* --- STILE DASHBOARD CARD (Tipo MioDottore) --- */
+        .dashboard-hero {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); /* Blu professionale */
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 20px rgba(0, 123, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .dashboard-hero h2 { margin: 0 0 10px 0; font-size: 24px; }
+        .dashboard-hero p { margin: 0; opacity: 0.9; font-size: 16px; }
+
+        .btn-calendar-hero {
+            background-color: white;
+            color: #0056b3;
+            padding: 12px 25px;
+            border-radius: 30px;
+            font-weight: bold;
+            text-decoration: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .btn-calendar-hero:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+            background-color: #f8f9fa;
+        }
+
+        /* Navbar Link */
+        .nav-link-custom {
+            color: #555;
+            text-decoration: none;
+            margin-right: 20px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: color 0.3s;
+        }
+        .nav-link-custom:hover { color: #007bff; }
+
         /* Modale */
         .modal-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -61,12 +108,19 @@
 </head>
 <body>
 
-<nav class="navbar" style="background-color: #f8f9fa; padding: 15px; border-bottom: 1px solid #ddd; margin-bottom: 20px;">
+<nav class="navbar" style="background-color: white; padding: 15px; border-bottom: 1px solid #eee; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
     <div class="container" style="display: flex; justify-content: space-between; align-items: center;">
-        <h2 style="margin: 0; color: #0056b3;"><i class="fa-solid fa-user-doctor"></i> MediBook Medico</h2>
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <span style="font-weight: bold;">Dott. ${nomeMedico}</span>
-            <a href="${pageContext.request.contextPath}/logout" class="btn btn-danger btn-sm">Esci</a>
+        <h2 style="margin: 0; color: #0056b3; font-size: 1.5rem;"><i class="fa-solid fa-user-doctor"></i> MediBook Medico</h2>
+
+        <div style="display: flex; align-items: center;">
+            <a href="${pageContext.request.contextPath}/medico/calendario" class="nav-link-custom">
+                <i class="fa-regular fa-calendar-days" style="color: #007bff;"></i> Agenda
+            </a>
+
+            <div style="height: 20px; width: 1px; background: #ddd; margin: 0 15px;"></div>
+
+            <span style="font-weight: bold; margin-right: 15px; color: #333;">Dott. ${nomeMedico}</span>
+            <a href="${pageContext.request.contextPath}/logout" class="btn btn-danger btn-sm" style="border-radius: 20px;">Esci</a>
         </div>
     </div>
 </nav>
@@ -80,9 +134,18 @@
         <div class="alert alert-danger">⚠️ Errore: <c:out value="${param.errore}"/></div>
     </c:if>
 
+    <div class="dashboard-hero">
+        <div>
+            <h2><i class="fa-regular fa-calendar-check"></i> La tua Agenda</h2>
+            <p>Visualizza i tuoi appuntamenti confermati in una comoda vista mensile o settimanale.</p>
+        </div>
+        <a href="${pageContext.request.contextPath}/medico/calendario" class="btn-calendar-hero">
+            Apri Calendario <i class="fa-solid fa-arrow-right"></i>
+        </a>
+    </div>
 
     <h3 class="section-title primary">
-        <i class="fa-solid fa-clipboard-list"></i> Visite da Gestire
+        <i class="fa-solid fa-clipboard-list"></i> Visite da Gestire (Tabella)
     </h3>
 
     <table class="table-custom">

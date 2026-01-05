@@ -111,4 +111,11 @@ public class GestionePrenotazioni {
         // Usa Long.valueOf se l'ID nel DB è Long, altrimenti toglilo
         return medicoRepository.findById(Long.valueOf(id)).orElse(null);
     }
+    // *** AGGIUNGI QUESTO METODO IN FONDO ALLA CLASSE GestionePrenotazioni ***
+
+    public List<Prenotazione> visualizzaVisitePerCalendario(Integer medicoId) {
+        // Recuperiamo solo quelle con stato "PRENOTATA"
+        // (Ignoriamo quelle CANCELLATE o già CONCLUSE per non affollare il calendario)
+        return prenotazioneRepository.findByMedicoIdAndStato(medicoId, "PRENOTATA");
+    }
 }

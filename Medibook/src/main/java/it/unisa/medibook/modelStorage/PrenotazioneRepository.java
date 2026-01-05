@@ -21,4 +21,6 @@ public interface PrenotazioneRepository extends JpaRepository<Prenotazione, Inte
     // CONTROLLO DISPONIBILITÀ (Modifica Segreteria)
     // "Esiste già una visita... ESCLUDENDO quella che sto modificando (IdNot)?"
     boolean existsByMedicoIdAndDataAndOraAndIdNot(Integer medicoId, LocalDate data, LocalTime ora, Integer id);
+    // Cerca tutte le prenotazioni di un medico che hanno uno stato specifico
+    List<Prenotazione> findByMedicoIdAndStato(Integer medicoId, String stato);
 }
