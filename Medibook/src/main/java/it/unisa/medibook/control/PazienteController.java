@@ -1,6 +1,8 @@
 package it.unisa.medibook.control;
 
+import it.unisa.medibook.model.Medico; // <--- Importante: Import aggiunto
 import it.unisa.medibook.model.Paziente;
+import it.unisa.medibook.model.Prenotazione;
 import it.unisa.medibook.model.Referto;
 import it.unisa.medibook.model.Utente;
 import it.unisa.medibook.modelService.GestionePrenotazioni;
@@ -17,6 +19,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/paziente")
@@ -32,7 +36,6 @@ public class PazienteController {
     public String dashboardPaziente(HttpSession session, Model model) {
         Utente utente = (Utente) session.getAttribute("utente");
 
-        // Controllo se l'utente è loggato ed è un PAZIENTE
         if (utente == null || !"PAZIENTE".equals(utente.getRuolo())) {
             return "redirect:/";
         }
@@ -41,13 +44,22 @@ public class PazienteController {
             Paziente paziente = (Paziente) utente;
             model.addAttribute("nomePaziente", paziente.getNome() + " " + paziente.getCognome());
 
-            // --- MODIFICA FONDAMENTALE ---
-            // Abbiamo cambiato "visite" in "storicoVisite" per farlo combaciare con la JSP
-            // che usa <c:forEach items="${storicoVisite}" ...>
-            model.addAttribute("storicoVisite", gestionePrenotazioni.visualizzaVisitePaziente(paziente.getId()));
+            List<Prenotazione> tutteLeVisite = gestionePrenotazioni.visualizzaVisitePaziente(paziente.getId());
+
+            List<Prenotazione> future = tutteLeVisite.stream()
+                    .filter(v -> "PRENOTATA".equals(v.getStato()))
+                    .collect(Collectors.toList());
+
+            List<Prenotazione> storico = tutteLeVisite.stream()
+                    .filter(v -> "EFFETTUATA".equals(v.getStato()) ||
+                            "CONCLUSA".equals(v.getStato()) ||
+                            "ANNULLATA".equals(v.getStato()))
+                    .collect(Collectors.toList());
+
+            model.addAttribute("visiteFuture", future);
+            model.addAttribute("storicoVisite", storico);
         }
 
-        // Serve per il menu a tendina della prenotazione (lista medici)
         model.addAttribute("listaMedici", gestionePrenotazioni.dammiTuttiIMedici());
 
         return "paziente";
@@ -70,41 +82,49 @@ public class PazienteController {
 
             gestionePrenotazioni.nuovaPrenotazione(utente.getId(), idMedico, dataL, oraL);
 
-            // Feedback visuale di successo
-            redirectAttributes.addAttribute("success", "true");
+            redirectAttributes.addAttribute("successo", "true");
 
         } catch (Exception e) {
+            // *** GESTIONE ERRORE CON MANTENIMENTO DATI ***
             System.out.println("Errore prenotazione: " + e.getMessage());
             redirectAttributes.addAttribute("errore", e.getMessage());
+
+            // 1. Rimandiamo indietro l'ID del medico
+            redirectAttributes.addAttribute("prevIdMedico", idMedico);
+
+            // 2. Recuperiamo il nome del medico per riempire la casella di testo
+            try {
+                Medico m = gestionePrenotazioni.getMedicoById(idMedico);
+                if (m != null) {
+                    String labelMedico = "Dr. " + m.getCognome() + " (" + m.getSpecializzazione() + ")";
+                    redirectAttributes.addAttribute("prevNomeMedico", labelMedico);
+                }
+            } catch (Exception ex) {
+                // Se fallisce il recupero del nome, pazienza
+            }
         }
 
         return "redirect:/paziente";
     }
 
     @GetMapping("/referto")
-    public String vediReferto(@RequestParam Integer id, HttpSession session, Model model) {
+    public String vediReferto(@RequestParam(name = "idVisita") Integer idVisita, HttpSession session, Model model) {
         Utente utente = (Utente) session.getAttribute("utente");
 
-        // Controllo Sicurezza Login
         if (utente == null || !"PAZIENTE".equals(utente.getRuolo())) return "redirect:/accedi";
 
-        // 1. Recupero il referto usando l'ID della prenotazione
-        Referto referto = gestioneReferti.visualizzaReferto(id);
+        Referto referto = gestioneReferti.visualizzaReferto(idVisita);
 
         if (referto == null) {
             return "redirect:/paziente?errore=RefertoNonTrovato";
         }
 
-        // 2. CONTROLLO DI SICUREZZA (IDOR Protection)
-        // Verifico che il referto appartenga davvero a questo paziente e non a un altro
         if (!referto.getPrenotazione().getPaziente().getId().equals(utente.getId())) {
-            return "redirect:/paziente?errore=AccessoNegato"; // Hacker bloccato
+            return "redirect:/paziente?errore=AccessoNegato";
         }
 
-        // 3. Passo il referto alla vista
         model.addAttribute("referto", referto);
 
-        // Assicurati di avere il file "paziente_visualizza_referto.jsp" nella cartella delle viste
         return "paziente_visualizza_referto";
     }
 }

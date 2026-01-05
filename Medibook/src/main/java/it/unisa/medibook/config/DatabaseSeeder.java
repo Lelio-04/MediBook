@@ -86,7 +86,7 @@ public class DatabaseSeeder implements CommandLineRunner {
         p1.setPaziente(paziente);
         p1.setData(LocalDate.now().plusDays(1)); // Domani
         p1.setOra(LocalTime.of(10, 0));
-        p1.setStato("DA_CONFERMARE");
+        p1.setStato("PRENOTATA");
 
         prenotazioneRepository.save(p1);
 
