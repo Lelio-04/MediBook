@@ -1,7 +1,7 @@
 package it.unisa.medibook.model;
 
 import jakarta.persistence.*;
-import java.time.LocalDate;
+import java.time.LocalDateTime; // Meglio di LocalDate per avere anche l'ora
 
 @Entity
 @Table(name = "referto")
@@ -12,32 +12,31 @@ public class Referto {
     private Integer id;
 
     @Column(nullable = false)
-    private LocalDate dataCaricamento;
+    private LocalDateTime dataCaricamento; // Cambiato in LocalDateTime
 
     @Column(columnDefinition = "TEXT", nullable = false)
-    private String contenuto; // Qui salviamo il testo del referto
+    private String contenuto;
 
-    // Relazione 1-a-1: Un referto appartiene a una sola prenotazione
     @OneToOne
     @JoinColumn(name = "prenotazione_id", nullable = false, unique = true)
     private Prenotazione prenotazione;
 
-    // Costruttore vuoto (obbligatorio per JPA)
     public Referto() {
     }
 
-    // Costruttore utile per creare l'oggetto rapidamente
-    public Referto(String contenuto, LocalDate dataCaricamento) {
+    // Costruttore AGGIORNATO: ora chiede anche la Prenotazione
+    public Referto(String contenuto, Prenotazione prenotazione) {
         this.contenuto = contenuto;
-        this.dataCaricamento = dataCaricamento;
+        this.prenotazione = prenotazione;
+        this.dataCaricamento = LocalDateTime.now(); // Imposta l'ora attuale in automatico
     }
 
     // --- Getter e Setter ---
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }
 
-    public LocalDate getDataCaricamento() { return dataCaricamento; }
-    public void setDataCaricamento(LocalDate dataCaricamento) { this.dataCaricamento = dataCaricamento; }
+    public LocalDateTime getDataCaricamento() { return dataCaricamento; }
+    public void setDataCaricamento(LocalDateTime dataCaricamento) { this.dataCaricamento = dataCaricamento; }
 
     public String getContenuto() { return contenuto; }
     public void setContenuto(String contenuto) { this.contenuto = contenuto; }

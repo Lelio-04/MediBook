@@ -13,25 +13,28 @@ public class Prenotazione {
     private Integer id;
 
     @Column(nullable = false)
-    private LocalDate data; // Usa LocalDate per gestire le date (anno-mese-giorno)
+    private LocalDate data;
 
     @Column(nullable = false)
-    private LocalTime ora;  // Usa LocalTime per gestire l'orario
+    private LocalTime ora;
 
     @Column(nullable = false)
-    private String stato;   // Esempi da ODD: "ATTIVA", "ANNULLATA", "EFFETTUATA"
+    private String stato;
 
     // --- Relazioni (Chiavi Esterne) ---
 
-    // Molte prenotazioni possono essere associate a un solo Medico
     @ManyToOne
     @JoinColumn(name = "medico_id", nullable = false)
     private Medico medico;
 
-    // Molte prenotazioni possono essere associate a un solo Paziente
     @ManyToOne
     @JoinColumn(name = "paziente_id", nullable = false)
     private Paziente paziente;
+
+    // --- NUOVA AGGIUNTA: Collegamento al Referto ---
+    // mappedBy = "prenotazione" dice a JPA: "La chiave esterna non è qui, ma nell'altra tabella (Referto)"
+    @OneToOne(mappedBy = "prenotazione", cascade = CascadeType.ALL)
+    private Referto referto;
 
     // --- Costruttori ---
 
@@ -94,6 +97,15 @@ public class Prenotazione {
 
     public void setPaziente(Paziente paziente) {
         this.paziente = paziente;
+    }
+
+    // Getter e Setter per il REFERTO
+    public Referto getReferto() {
+        return referto;
+    }
+
+    public void setReferto(Referto referto) {
+        this.referto = referto;
     }
 
     @Override
