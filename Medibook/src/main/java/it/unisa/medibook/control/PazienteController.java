@@ -5,16 +5,14 @@ import it.unisa.medibook.model.Paziente;
 import it.unisa.medibook.model.Prenotazione;
 import it.unisa.medibook.model.Referto;
 import it.unisa.medibook.model.Utente;
+import it.unisa.medibook.modelService.GestioneMedico;
 import it.unisa.medibook.modelService.GestionePrenotazioni;
 import it.unisa.medibook.modelService.GestioneReferti;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
@@ -28,6 +26,9 @@ public class PazienteController {
 
     @Autowired
     private GestionePrenotazioni gestionePrenotazioni;
+
+    @Autowired
+    private GestioneMedico gestioneMedico;
 
     @Autowired
     private GestioneReferti gestioneReferti;
@@ -60,7 +61,7 @@ public class PazienteController {
             model.addAttribute("storicoVisite", storico);
         }
 
-        model.addAttribute("listaMedici", gestionePrenotazioni.dammiTuttiIMedici());
+        model.addAttribute("listaMedici", gestioneMedico.dammiTuttiIMedici());
 
         return "paziente";
     }
@@ -94,7 +95,7 @@ public class PazienteController {
 
             // 2. Recuperiamo il nome del medico per riempire la casella di testo
             try {
-                Medico m = gestionePrenotazioni.getMedicoById(idMedico);
+                Medico m = gestioneMedico.getMedicoById(idMedico);
                 if (m != null) {
                     String labelMedico = "Dr. " + m.getCognome() + " (" + m.getSpecializzazione() + ")";
                     redirectAttributes.addAttribute("prevNomeMedico", labelMedico);
@@ -126,5 +127,20 @@ public class PazienteController {
         model.addAttribute("referto", referto);
 
         return "paziente_visualizza_referto";
+    }
+    @GetMapping("/api/giorni-lavoro")
+    @ResponseBody
+    public List<Integer> getGiorniLavoro(@RequestParam Integer medicoId) {
+        // Chiama il nuovo metodo del Service
+        return gestionePrenotazioni.getGiorniLavorativi(medicoId);
+    }
+
+    // 2. Restituisce gli orari per la tendina
+    @GetMapping("/api/orari-disponibili")
+    @ResponseBody
+    public List<LocalTime> getOrari(@RequestParam Integer medicoId, @RequestParam String data) {
+        LocalDate dataScelta = LocalDate.parse(data);
+        // Chiama il nuovo metodo del Service
+        return gestionePrenotazioni.getOrariLiberi(medicoId, dataScelta);
     }
 }

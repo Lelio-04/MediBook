@@ -43,7 +43,7 @@ public class DatabaseSeeder implements CommandLineRunner {
         medico.setCognome("Rossi");
         medico.setSpecializzazione("Cardiologia");
         medico.setNumeroAlbo("12345");
-
+        medico.setTurni("1:09:00-13:00,3:15:00-19:00");
         medicoRepository.save(medico);
 
         // 2. CREAZIONE MEDICO
@@ -55,6 +55,7 @@ public class DatabaseSeeder implements CommandLineRunner {
         medico2.setCognome("Verdi");
         medico2.setSpecializzazione("Oncologia");
         medico2.setNumeroAlbo("12345");
+        medico2.setTurni("2:10:00-18:00,5:09:00-12:00");
 
         medicoRepository.save(medico2);
 

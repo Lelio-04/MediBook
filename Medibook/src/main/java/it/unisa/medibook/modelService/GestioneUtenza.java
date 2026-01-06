@@ -1,12 +1,14 @@
 package it.unisa.medibook.modelService;
 
 import it.unisa.medibook.model.Paziente; // <--- Importante: Importa la classe Paziente
-import it.unisa.medibook.model.Utente;
+import it.unisa.medibook.model.*;
+import it.unisa.medibook.modelStorage.MedicoRepository;
 import it.unisa.medibook.modelStorage.PazienteRepository; // <--- Importante: Repository specifico
 import it.unisa.medibook.modelStorage.UtenteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -17,6 +19,9 @@ public class GestioneUtenza {
 
     @Autowired
     private PazienteRepository pazienteRepository; // <--- AGGIUNTA 1: Ci serve per salvare i pazienti
+
+    @Autowired
+    private MedicoRepository medicoRepository;
 
     /**
      * Effettua il login verificando email e password.
@@ -46,5 +51,10 @@ public class GestioneUtenza {
 
         // Salvo nel database (JPA riempirà sia la tabella 'utente' che 'paziente')
         pazienteRepository.save(p);
+    }
+    // Assicurati di avere @Autowired private MedicoRepository medicoRepository;
+
+    public List<Medico> elencaMedici() {
+        return medicoRepository.findAll();
     }
 }
