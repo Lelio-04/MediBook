@@ -4,6 +4,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder; // IMPORTANTE
+import org.springframework.security.crypto.password.PasswordEncoder;     // IMPORTANTE
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
@@ -11,20 +13,19 @@ import org.springframework.security.web.SecurityFilterChain;
 public class WebSecurityConfig {
 
     @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+    // -------------------------------------------------------------
+
+    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // 1. Disabilitiamo il CSRF (bloccherebbe i form POST delle JSP)
-                .csrf(csrf -> csrf.disable())
-
-                // 2. Autorizzazioni: PERMETTIAMO TUTTO
+                .csrf(csrf -> csrf.disable()) // Disabilita CSRF per semplicità nello sviluppo
                 .authorizeHttpRequests(auth -> auth
-                        .anyRequest().permitAll()
+                        .anyRequest().permitAll() // Permetti tutto (login gestito manualmente)
                 )
-
-                // 3. Disabilitiamo il form di login automatico di Spring (usiamo il tuo jsp)
                 .formLogin(form -> form.disable())
-
-                // 4. Disabilitiamo il logout automatico (lo gestiamo noi)
                 .logout(logout -> logout.disable());
 
         return http.build();
