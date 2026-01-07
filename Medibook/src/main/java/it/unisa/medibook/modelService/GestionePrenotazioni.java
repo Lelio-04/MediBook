@@ -28,29 +28,39 @@ public class GestionePrenotazioni {
     @Autowired
     private PazienteRepository pazienteRepository;
 
-    public Prenotazione modificaPrenotazione(Integer id, LocalDate nuovaData, LocalTime nuovaOra) throws Exception {
+    public Prenotazione modificaPrenotazione(Integer id, LocalDate nuovaData, LocalTime nuovaOra, String nuovoStato) throws Exception {
         Optional<Prenotazione> pOpt = prenotazioneRepository.findById(id);
 
         if (pOpt.isPresent()) {
             Prenotazione p = pOpt.get();
 
-            if (nuovaData.isBefore(LocalDate.now())) {
-                throw new Exception("Errore: Non è possibile spostare una visita nel passato.");
+            // 1. Se la data o l'ora sono diverse da quelle attuali, facciamo i controlli
+            if (!p.getData().equals(nuovaData) || !p.getOra().equals(nuovaOra)) {
+
+                if (nuovaData.isBefore(LocalDate.now())) {
+                    throw new Exception("Errore: Non è possibile spostare una visita nel passato.");
+                }
+
+                // Controlliamo se il nuovo slot è occupato (escludendo se stessa)
+                boolean slotOccupato = prenotazioneRepository.existsByMedicoIdAndDataAndOraAndIdNot(
+                        p.getMedico().getId(),
+                        nuovaData,
+                        nuovaOra,
+                        id
+                );
+
+                if (slotOccupato) {
+                    throw new Exception("Errore: Orario non disponibile. Il medico ha già una visita in questo orario.");
+                }
+
+                // Applichiamo i nuovi orari
+                p.setData(nuovaData);
+                p.setOra(nuovaOra);
             }
 
-            boolean slotOccupato = prenotazioneRepository.existsByMedicoIdAndDataAndOraAndIdNot(
-                    p.getMedico().getId(),
-                    nuovaData,
-                    nuovaOra,
-                    id
-            );
+            // 2. Aggiorniamo lo stato
+            p.setStato(nuovoStato);
 
-            if (slotOccupato) {
-                throw new Exception("Errore: Orario non disponibile. Il medico ha già una visita in questo orario.");
-            }
-
-            p.setData(nuovaData);
-            p.setOra(nuovaOra);
             return prenotazioneRepository.save(p);
         }
         throw new Exception("Prenotazione non trovata");

@@ -155,7 +155,7 @@
             <div class="card">
                 <h3>📂 Storico Visite</h3>
                 <div style="margin-bottom: 15px;">
-                    <input type="text" id="filterSearch" placeholder="🔍 Filtra storico..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                    <input type="text" id="filterSearch" placeholder="🔍 Filtra storico (medico o spec)..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
                 </div>
                 <c:choose>
                     <c:when test="${empty storicoVisite}">
@@ -259,8 +259,6 @@
     searchInput.addEventListener('input', function() {
         const query = this.value.toLowerCase();
         suggestionsDiv.innerHTML = '';
-
-        // Se cambio il testo, resetto l'ID nascosto (l'utente deve selezionare)
         hiddenIdInput.value = "";
         dateInput.disabled = true;
         dateInput.value = "";
@@ -288,27 +286,22 @@
         }
     });
 
-    // --- FUNZIONE DI SELEZIONE MEDICO ---
     function selezionaMedico(id, label) {
         searchInput.value = label;
         hiddenIdInput.value = id;
         suggestionsDiv.style.display = 'none';
         errorMsg.style.display = 'none';
-
-        // Attiva il calendario chiamando l'API
         configuraCalendarioPerMedico(id);
     }
 
     // --- 2. CONFIGURAZIONE CALENDARIO ---
     function configuraCalendarioPerMedico(medicoId) {
         dateInput.placeholder = "Caricamento...";
-
         fetch('${pageContext.request.contextPath}/paziente/api/giorni-lavoro?medicoId=' + medicoId)
             .then(res => res.json())
             .then(giorniLavorativi => {
                 dateInput.disabled = false;
                 dateInput.placeholder = "Seleziona data";
-
                 calendarInstance.set('disable', [
                     function(date) {
                         let jsDay = date.getDay();
@@ -334,7 +327,6 @@
             .then(orari => {
                 oraSelect.classList.remove('loading');
                 oraSelect.innerHTML = "";
-
                 if(orari.length === 0) {
                     oraSelect.innerHTML = "<option value=''>Nessun posto libero</option>";
                     oraSelect.disabled = true;
@@ -350,8 +342,27 @@
             });
     }
 
-    // --- AUTO-ATTIVAZIONE SE ARRIVO DA RICERCA ---
-    // Questo è il pezzo che mancava: controlla se c'è già un ID e attiva tutto
+    // --- 4. FILTRO STORICO (AGGIUNTO) ---
+    const filterInput = document.getElementById('filterSearch');
+    const historyRows = document.querySelectorAll('.history-row');
+
+    if (filterInput) {
+        filterInput.addEventListener('keyup', function() {
+            const term = this.value.toLowerCase();
+            historyRows.forEach(row => {
+                // Recupera il testo da cercare dall'attributo data-search
+                const searchText = row.getAttribute('data-search').toLowerCase();
+                // Mostra o nascondi la riga
+                if (searchText.includes(term)) {
+                    row.style.display = ''; // Visibile
+                } else {
+                    row.style.display = 'none'; // Nascosto
+                }
+            });
+        });
+    }
+
+    // --- AUTO-ATTIVAZIONE ---
     window.addEventListener('DOMContentLoaded', (event) => {
         const idPrecaricato = hiddenIdInput.value;
         if(idPrecaricato && idPrecaricato.trim() !== "") {
@@ -359,7 +370,6 @@
         }
     });
 
-    // Validazione finale
     document.getElementById('bookingForm').addEventListener('submit', function(e) {
         if(!hiddenIdInput.value) {
             e.preventDefault();
@@ -371,7 +381,6 @@
         }
     });
 
-    // Chiudi suggerimenti click fuori
     document.addEventListener('click', function(e) {
         if (!searchInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
             suggestionsDiv.style.display = 'none';
