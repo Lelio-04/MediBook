@@ -1,6 +1,8 @@
 package it.unisa.medibook.control;
 
 import it.unisa.medibook.model.Paziente;
+import it.unisa.medibook.model.SegreteriaUtenti;       // Importa la classe specifica
+import it.unisa.medibook.model.SegreteriaPrenotazioni; // Importa la classe specifica
 import it.unisa.medibook.modelService.GestioneUtenza;
 import it.unisa.medibook.model.Utente;
 import jakarta.servlet.http.HttpSession;
@@ -24,7 +26,7 @@ public class AuthController {
 
     @GetMapping("/accedi")
     public String showLogin(@RequestParam(required = false) String redirect,
-                            @RequestParam(required = false) String cerca, // Manteniamo il parametro ricerca
+                            @RequestParam(required = false) String cerca,
                             Model model) {
         model.addAttribute("redirect", redirect);
         model.addAttribute("cerca", cerca);
@@ -43,34 +45,47 @@ public class AuthController {
 
         if (utente != null) {
             session.setAttribute("utente", utente);
+
+            // --- 1. GESTIONE SEGRETERIE (Separation of Duties) ---
+            // Controlliamo il TIPO specifico della classe per indirizzare all'area corretta
+
+            if (utente instanceof SegreteriaUtenti) {
+                // Chi gestisce le anagrafiche va qui
+                return "redirect:/segreteria-utenti/dashboard";
+            }
+
+            if (utente instanceof SegreteriaPrenotazioni) {
+                // Chi gestisce l'agenda va qui
+                return "redirect:/segreteria-prenotazioni/dashboard";
+            }
+
+            // --- 2. GESTIONE ALTRI RUOLI (Medico, Paziente) ---
             String ruolo = utente.getRuolo().toUpperCase();
 
-            // --- LOGICA DI REINDIRIZZAMENTO FILTRATA ---
-
-            // 1. Se c'è un redirect (es. dalla ricerca), lo seguiamo SOLO se l'utente è un PAZIENTE
+            // Logica Redirect per Paziente (es. se arrivava da una ricerca)
             if (redirect != null && !redirect.trim().isEmpty() && !redirect.equals("null")) {
                 if ("PAZIENTE".equals(ruolo)) {
                     return "redirect:" + redirect;
                 }
-                // Se NON è un paziente (è medico/segreteria), ignoriamo il redirect della ricerca
-                // e proseguiamo sotto verso la loro dashboard naturale.
             }
 
-            // 2. Smistamento forzato in base al ruolo (Pattern Strategy)
+            // Smistamento Standard
             switch (ruolo) {
                 case "MEDICO":
-                    return "redirect:/medico";
-                case "SEGRETERIA":
-                    return "redirect:/segreteria";
+                    return "redirect:/medico"; // Assicurati di avere un MedicoController
+
+                // NOTA: Il case "SEGRETERIA" generico è stato RIMOSSO
+
                 case "PAZIENTE":
-                    // Se è un paziente e non c'era un redirect specifico, mandalo alla sua area
                     String queryCerca = (cerca != null && !cerca.isEmpty()) ? "?cerca=" + cerca : "";
                     return "redirect:/paziente" + queryCerca;
+
                 default:
                     return "redirect:/";
             }
         }
 
+        // Login fallito
         model.addAttribute("errore", "Credenziali non valide!");
         model.addAttribute("redirect", redirect);
         model.addAttribute("cerca", cerca);
@@ -79,13 +94,11 @@ public class AuthController {
 
     @GetMapping("/logout")
     public String logout(HttpSession session) {
-        // Rimuove i dati e invalida la sessione
         session.invalidate();
-        // Reindirizza alla home page pulita
         return "redirect:/";
     }
 
-    // --- REGISTRAZIONE ---
+    // --- REGISTRAZIONE (Solo per Pazienti) ---
 
     @GetMapping("/registrazione")
     public String showRegister() {
@@ -109,6 +122,7 @@ public class AuthController {
         p.setTelefono(telefono);
         p.setEmail(email);
         p.setPassword(password);
+        // p.setRuolo("PAZIENTE"); // Impostalo se non lo fa il costruttore o il DB
 
         try {
             gestioneUtenza.registraPaziente(p);

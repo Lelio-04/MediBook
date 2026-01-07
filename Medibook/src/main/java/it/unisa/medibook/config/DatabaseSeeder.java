@@ -21,9 +21,12 @@ public class DatabaseSeeder implements CommandLineRunner {
     @Autowired
     private PrenotazioneRepository prenotazioneRepository;
 
-    // AGGIUNTA: Serve per salvare correttamente l'entità Segreteria
+    // --- NUOVI REPOSITORY SPECIFICI ---
     @Autowired
-    private SegreteriaRepository segreteriaRepository;
+    private SegreteriaUtentiRepository segreteriaUtentiRepository;
+
+    @Autowired
+    private SegreteriaPrenotazioniRepository segreteriaPrenotazioniRepository;
 
     @Override
     public void run(String... args) throws Exception {
@@ -34,7 +37,7 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         System.out.println("--- Inizializzazione Dati di Prova (Seeding) ---");
 
-        // 1. CREAZIONE MEDICO
+        // 1. CREAZIONE MEDICO 1
         Medico medico = new Medico();
         medico.setEmail("rossi@medibook.it");
         medico.setPassword("password");
@@ -46,7 +49,7 @@ public class DatabaseSeeder implements CommandLineRunner {
         medico.setTurni("1:09:00-13:00,3:15:00-19:00");
         medicoRepository.save(medico);
 
-        // 2. CREAZIONE MEDICO
+        // 2. CREAZIONE MEDICO 2
         Medico medico2 = new Medico();
         medico2.setEmail("verdi@medibook.it");
         medico2.setPassword("password");
@@ -54,22 +57,33 @@ public class DatabaseSeeder implements CommandLineRunner {
         medico2.setNome("Flavio");
         medico2.setCognome("Verdi");
         medico2.setSpecializzazione("Oncologia");
-        medico2.setNumeroAlbo("12345");
+        medico2.setNumeroAlbo("67890");
         medico2.setTurni("2:10:00-18:00,5:09:00-12:00");
-
         medicoRepository.save(medico2);
 
-        // 2. CREAZIONE SEGRETERIA (Corretto: uso la classe specifica)
-        Segreteria segreteria = new Segreteria();
-        segreteria.setEmail("segreteria@medibook.it");
-        segreteria.setPassword("admin");
-        segreteria.setRuolo("SEGRETERIA");
-        // Se Segreteria non ha campi extra, basta questo.
-        // JPA riempirà tabella 'utente' e tabella 'segreteria'.
+        // --- 3. CREAZIONE SEGRETERIA UTENTI (Gestione Anagrafiche) ---
+        SegreteriaUtenti segUtenti = new SegreteriaUtenti();
+        segUtenti.setEmail("segreteria.utenti@medibook.it"); // Email specifica
+        segUtenti.setPassword("admin");
+        segUtenti.setRuolo("SEGRETERIA"); // Il ruolo stringa rimane generico, la classe fa la differenza
+        segUtenti.setNome("Anna");
+        segUtenti.setCognome("Bianchi");
 
-        segreteriaRepository.save(segreteria);
+        segreteriaUtentiRepository.save(segUtenti);
+        System.out.println("-> Creata Segreteria Utenti: segreteria.utenti@medibook.it / admin");
 
-        // 3. CREAZIONE PAZIENTE
+        // --- 4. CREAZIONE SEGRETERIA PRENOTAZIONI (Gestione Agenda) ---
+        SegreteriaPrenotazioni segPrenotazioni = new SegreteriaPrenotazioni();
+        segPrenotazioni.setEmail("segreteria.prenotazioni@medibook.it"); // Email specifica
+        segPrenotazioni.setPassword("admin");
+        segPrenotazioni.setRuolo("SEGRETERIA");
+        segPrenotazioni.setNome("Carla");
+        segPrenotazioni.setCognome("Neri");
+
+        segreteriaPrenotazioniRepository.save(segPrenotazioni);
+        System.out.println("-> Creata Segreteria Prenotazioni: segreteria.prenotazioni@medibook.it / admin");
+
+        // 5. CREAZIONE PAZIENTE
         Paziente paziente = new Paziente();
         paziente.setEmail("paziente1@gmail.com");
         paziente.setPassword("password");
@@ -81,7 +95,7 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         pazienteRepository.save(paziente);
 
-        // 4. CREAZIONE PRENOTAZIONE DI PROVA
+        // 6. CREAZIONE PRENOTAZIONE DI PROVA
         Prenotazione p1 = new Prenotazione();
         p1.setMedico(medico);
         p1.setPaziente(paziente);
