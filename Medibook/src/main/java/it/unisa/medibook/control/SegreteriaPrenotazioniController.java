@@ -12,8 +12,11 @@ public class SegreteriaPrenotazioniController {
 
     @GetMapping("/dashboard")
     public String dashboard(HttpSession session) {
-        Utente u = (Utente) session.getAttribute("utenteLoggato");
+        Utente utente = (Utente) session.getAttribute("utente");
 
+        if (utente == null || !"SEGRETERIA".equals(utente.getRuolo())) {
+            return "redirect:/";
+        }
 
         return "dashboard-agenda"; // Quella con la tabella delle visite
     }
