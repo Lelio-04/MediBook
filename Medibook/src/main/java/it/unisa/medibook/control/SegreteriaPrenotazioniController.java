@@ -3,8 +3,9 @@ package it.unisa.medibook.control;
 import it.unisa.medibook.model.Prenotazione;
 import it.unisa.medibook.model.Referto;
 import it.unisa.medibook.model.Utente;
+import it.unisa.medibook.modelService.EmailService; // <--- 1. Import EmailService
 import it.unisa.medibook.modelService.GestionePrenotazioni;
-import it.unisa.medibook.modelService.GestioneReferti; // <--- Importiamo il service Referti
+import it.unisa.medibook.modelService.GestioneReferti;
 import it.unisa.medibook.modelStorage.PrenotazioneRepository;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter; // <--- Import Formatter
 
 @Controller
 @RequestMapping("/segreteria-prenotazioni")
@@ -31,10 +33,13 @@ public class SegreteriaPrenotazioniController {
     private GestionePrenotazioni gestionePrenotazioni;
 
     @Autowired
-    private GestioneReferti gestioneReferti; // <--- Service Referti aggiunto
+    private GestioneReferti gestioneReferti;
+
+    @Autowired
+    private EmailService emailService; // <--- 2. Iniezione del Service Email
 
     @GetMapping("/dashboard")
-    public String dashboard(@RequestParam(required = false) String q, // Parametro di ricerca opzionale
+    public String dashboard(@RequestParam(required = false) String q,
                             HttpSession session,
                             Model model) {
 
@@ -43,24 +48,20 @@ public class SegreteriaPrenotazioniController {
             return "redirect:/";
         }
 
-        // 1. LOGICA DI RICERCA
         if (q != null && !q.trim().isEmpty()) {
-            // Cerca sia nel nome che nel cognome
             model.addAttribute("listaPrenotazioni",
                     prenotazioneRepository.findByPazienteNomeContainingIgnoreCaseOrPazienteCognomeContainingIgnoreCase(q, q));
-            model.addAttribute("searchKeyword", q); // Per mantenere il testo nella barra di ricerca
+            model.addAttribute("searchKeyword", q);
         } else {
-            // Se non cerco nulla, mostra tutto
             model.addAttribute("listaPrenotazioni", prenotazioneRepository.findAll());
         }
 
-        // 2. DATA DI OGGI PER IL BLOCCO DEL CALENDARIO
         model.addAttribute("oggi", LocalDate.now());
 
         return "dashboard-agenda";
     }
 
-    // --- METODO INTELLIGENTE PER L'AGGIORNAMENTO ---
+    // --- AGGIORNAMENTO CON INVIO EMAIL ---
     @PostMapping("/aggiorna")
     public String aggiorna(@RequestParam Integer id,
                            @RequestParam LocalDate nuovaData,
@@ -73,21 +74,26 @@ public class SegreteriaPrenotazioniController {
         if (utente == null || !"SEGRETERIA".equals(utente.getRuolo())) return "redirect:/";
 
         try {
-            // CASO SPECIALE: La segretaria ha selezionato "CONCLUSA"
+            // CASO 1: CONCLUSA -> Va al Referto
             if ("CONCLUSA".equals(nuovoStato)) {
-
-                // 1. Salviamo prima data e ora (e mettiamo stato EFFETTUATA per preparare il terreno al referto)
-                // Nota: Mettiamo "EFFETTUATA" perché GestioneReferti.caricaReferto RICHIEDE che lo stato sia EFFETTUATA.
                 gestionePrenotazioni.modificaPrenotazione(id, nuovaData, nuovaOra, "EFFETTUATA");
-
-                // 2. Reindirizziamo alla pagina per scrivere il referto
                 return "redirect:/segreteria-prenotazioni/referto/nuovo?id=" + id;
             }
 
-            // CASO NORMALE (Prenotata, Annullata, Effettuata senza referto immediato)
+            // CASO 2: MODIFICA NORMALE -> Aggiorna e Invia Email
             else {
+                // 1. Eseguiamo la modifica
                 gestionePrenotazioni.modificaPrenotazione(id, nuovaData, nuovaOra, nuovoStato);
                 redirectAttributes.addFlashAttribute("successo", "Prenotazione aggiornata (" + nuovoStato + ")!");
+
+                // 2. Recuperiamo la prenotazione aggiornata per mandare l'email
+                // (Evitiamo di mandare email se è stata cancellata, se preferisci)
+                if (!"CANCELLATA".equals(nuovoStato)) {
+                    Prenotazione p = prenotazioneRepository.findById(id).orElse(null);
+                    if (p != null) {
+                        inviaEmailModifica(p); // <--- 3. Chiamata al metodo helper
+                    }
+                }
             }
 
         } catch (Exception e) {
@@ -98,7 +104,7 @@ public class SegreteriaPrenotazioniController {
         return "redirect:/segreteria-prenotazioni/dashboard";
     }
 
-    // --- GESTIONE REFERTO LATO SEGRETERIA ---
+    // --- GESTIONE REFERTO ---
 
     @GetMapping("/referto/nuovo")
     public String showNuovoReferto(@RequestParam Integer id, HttpSession session, Model model) {
@@ -107,13 +113,12 @@ public class SegreteriaPrenotazioniController {
 
         Prenotazione p = prenotazioneRepository.findById(id).orElse(null);
 
-        // Controllo di sicurezza
         if (p == null || !"EFFETTUATA".equals(p.getStato())) {
             return "redirect:/segreteria-prenotazioni/dashboard?errore=DeviPrimaImpostareEffettuata";
         }
 
         model.addAttribute("prenotazione", p);
-        return "segreteria_scrivi_referto"; // Creiamo questa JSP sotto
+        return "segreteria_scrivi_referto";
     }
 
     @PostMapping("/referto/salva")
@@ -133,7 +138,6 @@ public class SegreteriaPrenotazioniController {
             r.setContenuto(contenuto);
             r.setDataCaricamento(LocalDateTime.now());
 
-            // Questo metodo del service salva il referto E imposta lo stato a "CONCLUSA"
             gestioneReferti.caricaReferto(r, p);
 
             redirectAttributes.addFlashAttribute("successo", "Referto salvato e visita Conclusa!");
@@ -148,8 +152,36 @@ public class SegreteriaPrenotazioniController {
 
     @GetMapping("/cancella")
     public String cancella(@RequestParam Integer id, HttpSession session) {
-        // ... (tuo codice esistente) ...
         prenotazioneRepository.deleteById(id);
         return "redirect:/segreteria-prenotazioni/dashboard";
+    }
+
+    // --- HELPER METHOD PER EMAIL (Privato) ---
+    private void inviaEmailModifica(Prenotazione p) {
+        try {
+            String emailPaziente = p.getPaziente().getEmail();
+
+            if (emailPaziente != null && !emailPaziente.isEmpty()) {
+
+                String oggetto = "⚠️ Modifica Appuntamento - MediBook";
+                String nomePaziente = p.getPaziente().getNome() + " " + p.getPaziente().getCognome();
+                String nomeMedico = p.getMedico().getCognome();
+                String dataFormat = p.getData().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                String oraFormat = p.getOra().toString();
+
+                // Chiama il servizio che genera l'HTML
+                emailService.inviaEmailModifica(
+                        emailPaziente,
+                        oggetto,
+                        nomePaziente,
+                        nomeMedico,
+                        dataFormat,
+                        oraFormat
+                );
+            }
+        } catch (Exception e) {
+            // Logghiamo l'errore ma non blocchiamo l'applicazione
+            System.err.println("Errore durante l'invio dell'email: " + e.getMessage());
+        }
     }
 }
