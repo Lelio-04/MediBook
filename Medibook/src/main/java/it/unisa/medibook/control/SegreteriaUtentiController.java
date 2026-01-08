@@ -10,6 +10,7 @@ import it.unisa.medibook.modelStorage.PazienteRepository;
 import it.unisa.medibook.modelStorage.PrenotazioneRepository;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -98,54 +99,78 @@ public class SegreteriaUtentiController {
     @PostMapping("/salva")
     public String salvaPaziente(@ModelAttribute Paziente p,
                                 HttpSession session,
+                                Model model,
                                 RedirectAttributes redirectAttributes) {
 
         if (!isAutorizzato(session)) return "redirect:/accedi";
 
-        // --- NUOVO PAZIENTE ---
-        if (p.getId() == null) {
-            String passwordProvvisoria = "Medibook123";
+        try {
+            // --- LOGICA DI SALVATAGGIO ---
 
-            // 3. CRIPTIAMO LA PASSWORD PRIMA DI SALVARE
-            p.setPassword(passwordService.hash(passwordProvvisoria));
+            if (p.getId() == null) {
+                // A. NUOVO PAZIENTE
+                String passwordProvvisoria = "Medibook123";
+                p.setPassword(passwordService.hash(passwordProvvisoria));
+                p.setRuolo("PAZIENTE");
 
-            p.setRuolo("PAZIENTE");
+                // Salva (qui scatta l'errore se email o CF sono duplicati)
+                pazienteRepository.save(p);
 
-            pazienteRepository.save(p);
-
-            // 4. INVIAMO L'EMAIL (Qui mandiamo la password IN CHIARO affinché l'utente la legga)
-            try {
-                if (p.getEmail() != null && !p.getEmail().isEmpty()) {
-                    emailService.inviaEmailBenvenuto(
-                            p.getEmail(),
-                            p.getNome(),
-                            p.getCognome(),
-                            passwordProvvisoria // Passiamo quella leggibile
-                    );
+                // Invio Email
+                try {
+                    if (p.getEmail() != null && !p.getEmail().isEmpty()) {
+                        emailService.inviaEmailBenvenuto(
+                                p.getEmail(), p.getNome(), p.getCognome(), passwordProvvisoria
+                        );
+                    }
+                } catch (Exception e) {
+                    System.err.println("Errore invio email benvenuto: " + e.getMessage());
                 }
-            } catch (Exception e) {
-                System.err.println("Errore invio email benvenuto: " + e.getMessage());
+
+                return "redirect:/segreteria-utenti/dashboard?msg=Utente creato e Email inviata!";
+
+            } else {
+                // B. MODIFICA ESISTENTE
+                Paziente esistente = pazienteRepository.findById(p.getId()).orElse(null);
+
+                if (esistente != null) {
+                    esistente.setNome(p.getNome());
+                    esistente.setCognome(p.getCognome());
+
+                    // Se cambio il CF con uno già esistente, l'errore scatterà al save()
+                    esistente.setCodiceFiscale(p.getCodiceFiscale());
+
+                    esistente.setTelefono(p.getTelefono());
+                    esistente.setIndirizzo(p.getIndirizzo());
+
+                    pazienteRepository.save(esistente);
+                }
+                return "redirect:/segreteria-utenti/dashboard?msg=Dati Paziente Aggiornati";
             }
 
-            return "redirect:/segreteria-utenti/dashboard?msg=Utente creato e Email inviata!";
+        } catch (DataIntegrityViolationException e) {
+            // --- GESTIONE ERRORI DUPLICATI ---
 
-        } else {
-            // --- MODIFICA ESISTENTE ---
-            Paziente esistente = pazienteRepository.findById(p.getId()).orElse(null);
+            // 1. Recuperiamo il messaggio di errore grezzo dal database
+            String msgErroreDB = e.getMostSpecificCause().getMessage();
 
-            if (esistente != null) {
-                esistente.setNome(p.getNome());
-                esistente.setCognome(p.getCognome());
-                esistente.setCodiceFiscale(p.getCodiceFiscale());
-                esistente.setTelefono(p.getTelefono());
-                esistente.setIndirizzo(p.getIndirizzo());
+            // 2. Prepariamo un messaggio di default
+            String messaggioUtente = "Errore: Dati duplicati presenti nel sistema.";
 
-                // Nota: In modifica NON tocchiamo la password
-                // La password rimane quella vecchia (già hashata)
-
-                pazienteRepository.save(esistente);
+            // 3. Cerchiamo di capire COSA è duplicato analizzando il messaggio
+            if (msgErroreDB != null) {
+                if (msgErroreDB.contains(p.getEmail())) {
+                    messaggioUtente = "Errore: L'email " + p.getEmail() + " è già in uso.";
+                } else if (msgErroreDB.contains(p.getCodiceFiscale())) {
+                    messaggioUtente = "Errore: Il Codice Fiscale " + p.getCodiceFiscale() + " è già presente.";
+                }
             }
-            return "redirect:/segreteria-utenti/dashboard?msg=Dati Paziente Aggiornati";
+
+            // 4. Passiamo dati e errore alla JSP
+            model.addAttribute("paziente", p);
+            model.addAttribute("errore", messaggioUtente);
+
+            return "form_paziente";
         }
     }
 }

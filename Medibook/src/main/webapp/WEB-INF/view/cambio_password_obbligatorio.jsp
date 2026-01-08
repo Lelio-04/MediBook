@@ -20,10 +20,19 @@
     <form action="/aggiorna-password-iniziale" method="post">
 
         <label>Nuova Password</label>
-        <input type="password" name="nuovaPassword" required placeholder="Nuova password personale">
+        <input type="password" name="nuovaPassword"
+               required
+               minlength="8"
+               placeholder="Minimo 8 caratteri">
+        <small style="color: #666; font-size: 0.85em; margin-top: -10px; display: block; margin-bottom: 15px;">
+            Inserisci almeno 8 caratteri.
+        </small>
 
         <label>Conferma Nuova Password</label>
-        <input type="password" name="confermaPassword" required placeholder="Ripeti password">
+        <input type="password" name="confermaPassword"
+               required
+               minlength="8"
+               placeholder="Ripeti la nuova password">
 
         <button type="submit" class="btn btn-primary" style="width:100%; margin-top:20px;">
             Salva e Accedi

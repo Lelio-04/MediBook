@@ -35,8 +35,16 @@
 
         <label for="codiceFiscale">Codice Fiscale</label>
         <input type="text" id="codiceFiscale" name="codiceFiscale"
-               placeholder="RSSMRA80A01H501U" required
+               placeholder="RSSMRA80A01H501U"
+               required
+               minlength="16"
+               maxlength="16"
+               pattern="[A-Za-z]{6}[0-9]{2}[A-Za-z][0-9]{2}[A-Za-z][0-9]{3}[A-Za-z]"
+               title="Il Codice Fiscale deve essere di 16 caratteri (es. RSSMRA80A01H501U)"
                style="text-transform: uppercase; font-family: monospace; letter-spacing: 1px;">
+        <small style="color: #666; font-size: 0.85em; margin-top: -10px; display: block; margin-bottom: 15px;">
+            Formato: 16 caratteri (6 lettere, 2 numeri, 1 lettera, 2 numeri...)
+        </small>
 
         <label for="telefono">Telefono</label>
         <input type="text" id="telefono" name="telefono" placeholder="333 1234567" required>
@@ -47,7 +55,13 @@
         <input type="email" id="email" name="email" placeholder="mario.rossi@email.it" required>
 
         <label for="password">Password</label>
-        <input type="password" id="password" name="password" placeholder="Scegli una password sicura" required>
+        <input type="password" id="password" name="password"
+               placeholder="Minimo 8 caratteri"
+               minlength="8"
+               required>
+        <small style="color: #666; font-size: 0.85em; margin-top: -10px; display: block; margin-bottom: 15px;">
+            La password deve contenere almeno 8 caratteri.
+        </small>
 
         <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 10px; font-size: 18px;">
             Conferma Registrazione
