@@ -57,4 +57,7 @@ public class GestioneUtenza {
     public List<Medico> elencaMedici() {
         return medicoRepository.findAll();
     }
+    public void aggiornaPassword(Utente u) {
+        utenteRepository.save(u);
+    }
 }

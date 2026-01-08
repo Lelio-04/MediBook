@@ -91,36 +91,42 @@ public class SegreteriaUtentiController {
     // ============================================================
     // 5. SALVATAGGIO (IN CHIARO)
     // ============================================================
+    // ... codice precedente uguale ...
+
+    // ============================================================
+    // 5. SALVATAGGIO (IN CHIARO)
+    // ============================================================
     @PostMapping("/salva")
     public String salvaPaziente(@ModelAttribute Paziente p, HttpSession session) {
         if (!isAutorizzato(session)) return "redirect:/accedi";
 
         if (p.getId() == null) {
             // --- NUOVO PAZIENTE ---
-
-            // Salviamo la password in CHIARO per compatibilità con il tuo GestioneUtenza
-            String passwordDefault = "Medibook123";
-            p.setPassword(passwordDefault);
-
+            p.setPassword("Medibook123");
             p.setRuolo("PAZIENTE");
             pazienteRepository.save(p);
 
-            return "redirect:/segreteria-utenti/dashboard?msg=Utente creato! Password: " + passwordDefault;
+            return "redirect:/segreteria-utenti/dashboard?msg=Utente creato. Password provvisoria: Medibook123";
 
         } else {
-            // --- MODIFICA ---
+            // --- MODIFICA ESISTENTE ---
             Paziente esistente = pazienteRepository.findById(p.getId()).orElse(null);
+
             if (esistente != null) {
+                // Aggiorniamo i dati modificabili
                 esistente.setNome(p.getNome());
                 esistente.setCognome(p.getCognome());
                 esistente.setCodiceFiscale(p.getCodiceFiscale());
-                esistente.setEmail(p.getEmail());
                 esistente.setTelefono(p.getTelefono());
                 esistente.setIndirizzo(p.getIndirizzo());
-                // Non tocchiamo password e ruolo
+
+                // NOTA IMPORTANTE:
+                // Abbiamo rimosso: esistente.setEmail(p.getEmail());
+                // Così la mail vecchia rimane nel database anche se qualcuno prova a forzarla.
+
                 pazienteRepository.save(esistente);
             }
-            return "redirect:/segreteria-utenti/dashboard?msg=Aggiornato";
+            return "redirect:/segreteria-utenti/dashboard?msg=Aggiornato (Email invariata)";
         }
     }
 }

@@ -40,9 +40,9 @@
         .section-title.primary { color: #007bff; border-color: #007bff; }
         .section-title.secondary { color: #6c757d; border-color: #6c757d; }
 
-        /* --- STILE DASHBOARD CARD (Tipo MioDottore) --- */
+        /* --- STILE DASHBOARD HERO --- */
         .dashboard-hero {
-            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); /* Blu professionale */
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
             color: white;
             padding: 30px;
             border-radius: 12px;
@@ -104,6 +104,35 @@
         .btn-cancel { background-color: #e2e6ea; color: #333; }
         .btn-confirm { background-color: #007bff; color: white; }
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+        /* Stile barra filtro aggiornata */
+        .filter-bar {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .btn-filter {
+            padding: 8px 15px;
+            border-radius: 6px;
+            border: 1px solid #ced4da;
+            background: white;
+            cursor: pointer;
+            font-weight: 600;
+            color: #555;
+            transition: 0.2s;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-filter:hover { background: #e9ecef; }
+        .btn-filter.active { background: #007bff; color: white; border-color: #0056b3; }
     </style>
 </head>
 <body>
@@ -116,9 +145,7 @@
             <a href="${pageContext.request.contextPath}/medico/calendario" class="nav-link-custom">
                 <i class="fa-regular fa-calendar-days" style="color: #007bff;"></i> Agenda
             </a>
-
             <div style="height: 20px; width: 1px; background: #ddd; margin: 0 15px;"></div>
-
             <span style="font-weight: bold; margin-right: 15px; color: #333;">Dott. ${nomeMedico}</span>
             <a href="${pageContext.request.contextPath}/logout" class="btn btn-danger btn-sm" style="border-radius: 20px;">Esci</a>
         </div>
@@ -145,10 +172,30 @@
     </div>
 
     <h3 class="section-title primary">
-        <i class="fa-solid fa-clipboard-list"></i> Visite da Gestire (Tabella)
+        <i class="fa-solid fa-clipboard-list"></i> Visite da Gestire
     </h3>
 
-    <table class="table-custom">
+    <div class="filter-bar">
+        <span style="font-weight: 600; color:#555; margin-right: 5px;"><i class="fa-solid fa-filter"></i> Organizza:</span>
+
+        <button onclick="filtraOggi()" class="btn-filter">
+            <i class="fa-regular fa-calendar-check"></i> Solo Oggi
+        </button>
+
+        <button onclick="ordinaDate('asc')" class="btn-filter">
+            <i class="fa-solid fa-arrow-down-short-wide"></i> Data Crescente
+        </button>
+
+        <button onclick="ordinaDate('desc')" class="btn-filter">
+            <i class="fa-solid fa-arrow-up-wide-short"></i> Data Decrescente
+        </button>
+
+        <button onclick="mostraTutte()" class="btn-filter" style="margin-left:auto;">
+            <i class="fa-solid fa-rotate-left"></i> MostraTutto
+        </button>
+    </div>
+
+    <table class="table-custom" id="tabellaDaGestire">
         <thead>
         <tr>
             <th>Data e Ora</th>
@@ -183,7 +230,6 @@
 
                     <td>
                         <c:choose>
-                            <%-- AZIONI PER VISITA PRENOTATA --%>
                             <c:when test="${v.stato == 'PRENOTATA'}">
                                 <div class="btn-group">
                                     <form id="form-esegui-${v.id}" action="${pageContext.request.contextPath}/medico/cambiaStato" method="post" style="display:none;">
@@ -205,8 +251,6 @@
                                     </button>
                                 </div>
                             </c:when>
-
-                            <%-- AZIONI PER VISITA EFFETTUATA (SCRIVI REFERTO) --%>
                             <c:when test="${v.stato == 'EFFETTUATA'}">
                                 <a href="${pageContext.request.contextPath}/medico/referto/nuovo?id=${v.id}" class="action-btn btn-referto">
                                     <i class="fa-solid fa-file-pen"></i> Scrivi Referto
@@ -219,6 +263,10 @@
         </c:forEach>
         </tbody>
     </table>
+
+    <div id="noResultsMsg" style="padding: 20px; text-align: center; color: #777; background: #fff; border: 1px dashed #ddd; border-radius: 8px; display: none;">
+        Nessuna visita per oggi.
+    </div>
 
     <c:if test="${!hasVisiteAttive}">
         <div style="padding: 20px; text-align: center; color: #777; background: #fff; border: 1px dashed #ddd; border-radius: 8px;">
@@ -249,7 +297,6 @@
                 <tr>
                     <td style="color: #555;">${v.data}</td>
                     <td>${v.paziente.nome} ${v.paziente.cognome}</td>
-
                     <td>
                         <c:choose>
                             <c:when test="${v.stato == 'CONCLUSA'}">
@@ -260,7 +307,6 @@
                             </c:when>
                         </c:choose>
                     </td>
-
                     <td>
                         <c:if test="${v.stato == 'CONCLUSA'}">
                             <a href="${pageContext.request.contextPath}/medico/referto/visualizza?id=${v.id}" class="action-btn btn-vedi">
@@ -290,7 +336,6 @@
         <div style="font-size: 40px; margin-bottom: 10px;">⚠️</div>
         <div class="modal-title">Conferma Azione</div>
         <p class="modal-text" id="modalMessaggio">Sei sicuro?</p>
-
         <div class="modal-buttons">
             <button class="btn-modal btn-cancel" onclick="chiudiModal()">No, indietro</button>
             <button class="btn-modal btn-confirm" id="btnConfermaFinale" onclick="procediConInvio()">Sì, procedi</button>
@@ -299,6 +344,107 @@
 </div>
 
 <script>
+    // --- FUNZIONALITÀ FILTRO E ORDINAMENTO ---
+
+    // Filtra per Data Odierna
+    function filtraOggi() {
+        // Otteniamo la data di oggi in formato yyyy-MM-dd e dd/MM/yyyy
+        const oggi = new Date();
+
+        // Formato IT: dd/mm/yyyy
+        const dd = String(oggi.getDate()).padStart(2, '0');
+        const mm = String(oggi.getMonth() + 1).padStart(2, '0'); // Gennaio è 0!
+        const yyyy = oggi.getFullYear();
+
+        const oggiIT = dd + '/' + mm + '/' + yyyy;
+        const oggiISO = yyyy + '-' + mm + '-' + dd;
+
+        let table = document.getElementById('tabellaDaGestire');
+        let rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+        let visibleCount = 0;
+
+        for (let i = 0; i < rows.length; i++) {
+            let dateCell = rows[i].getElementsByTagName('td')[0];
+            if (dateCell) {
+                let cellText = dateCell.innerText;
+                // Controlliamo se contiene la data di oggi in uno dei due formati
+                if (cellText.includes(oggiIT) || cellText.includes(oggiISO)) {
+                    rows[i].style.display = '';
+                    visibleCount++;
+                } else {
+                    rows[i].style.display = 'none';
+                }
+            }
+        }
+        document.getElementById('noResultsMsg').style.display = (visibleCount === 0) ? 'block' : 'none';
+    }
+
+    // Mostra tutte le righe (Reset)
+    function mostraTutte() {
+        let rows = document.querySelectorAll('#tabellaDaGestire tbody tr');
+        rows.forEach(row => row.style.display = '');
+        document.getElementById('noResultsMsg').style.display = 'none';
+    }
+
+    // Ordinamento (Bubble Sort semplice su righe HTML)
+    function ordinaDate(direzione) {
+        // Mostra prima tutte le righe nascoste
+        mostraTutte();
+
+        let table = document.getElementById("tabellaDaGestire");
+        let tbody = table.querySelector("tbody");
+        let rows = Array.from(tbody.querySelectorAll("tr"));
+
+        rows.sort((a, b) => {
+            // Estraiamo il testo della data (cella 0)
+            let dateTextA = a.cells[0].innerText.trim(); // es. "2025-05-12 10:30"
+            let dateTextB = b.cells[0].innerText.trim();
+
+            // Convertiamo in oggetti Date per il confronto
+            let dateA = parseCustomDate(dateTextA);
+            let dateB = parseCustomDate(dateTextB);
+
+            if (direzione === 'asc') {
+                return dateA - dateB;
+            } else {
+                return dateB - dateA;
+            }
+        });
+
+        // Riaccoda le righe ordinate nel tbody
+        rows.forEach(row => tbody.appendChild(row));
+    }
+
+    // Helper per parsare la data mista (ISO o IT)
+    function parseCustomDate(str) {
+        // Rimuove eventuali icone o spazi extra, prende solo i primi caratteri che sembrano una data
+        // La cella contiene data \n ora. Prendiamo tutto.
+
+        // Proviamo a vedere se è ISO (yyyy-mm-dd) o IT (dd/mm/yyyy)
+        // Regex semplice per data ISO: 4 cifre - 2 cifre - 2 cifre
+        const isoMatch = str.match(/(\d{4})-(\d{2})-(\d{2})/);
+        if (isoMatch) {
+            // È ISO, costruiamo la data aggiungendo l'ora se presente
+            // Cerca l'ora HH:mm
+            const timeMatch = str.match(/(\d{2}):(\d{2})/);
+            let timeStr = timeMatch ? "T" + timeMatch[0] + ":00" : "T00:00:00";
+            return new Date(isoMatch[0] + timeStr);
+        }
+
+        // Regex per data IT: 2 cifre / 2 cifre / 4 cifre
+        const itMatch = str.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+        if (itMatch) {
+            // Convertiamo in ISO per il costruttore Date: yyyy-mm-dd
+            let isoStr = itMatch[3] + "-" + itMatch[2] + "-" + itMatch[1];
+            const timeMatch = str.match(/(\d{2}):(\d{2})/);
+            let timeStr = timeMatch ? "T" + timeMatch[0] + ":00" : "T00:00:00";
+            return new Date(isoStr + timeStr);
+        }
+
+        return new Date(0); // Fallback
+    }
+
+    // --- MODALE JS ---
     let formDaInviareId = null;
 
     function chiediConferma(formId, messaggio, testoBottone = "Sì, procedi") {
