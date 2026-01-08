@@ -85,7 +85,7 @@
 
                 <form action="${pageContext.request.contextPath}/paziente/prenota" method="post" id="bookingForm">
 
-                    <label style="display:block; margin-bottom:5px; font-weight:500;">Cerca il Medico:</label>
+                    <label style="display:block; margin-bottom:5px; font-weight:500;">Cerca il Medico (per Nome o Specializzazione):</label>
                     <div class="autocomplete-container">
 
                         <%-- 1. RECUPERO VALORI PRECEDENTI O DALLA RICERCA --%>
@@ -93,7 +93,7 @@
                         <c:set var="valoreId" value="${not empty param.prevIdMedico ? param.prevIdMedico : param.idMedico}" />
 
                         <input type="text" id="medicoSearch"
-                               placeholder="Es. Rossi o Cardiologo..."
+                               placeholder="Es. Rossi, Cardiologo, Dermatologo..."
                                autocomplete="off"
                                value="${valoreNome}"
                                style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box;"
@@ -155,7 +155,7 @@
             <div class="card">
                 <h3>📂 Storico Visite</h3>
                 <div style="margin-bottom: 15px;">
-                    <input type="text" id="filterSearch" placeholder="🔍 Filtra storico (medico o spec)..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                    <input type="text" id="filterSearch" placeholder="🔍 Filtra storico (medico)..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
                 </div>
                 <c:choose>
                     <c:when test="${empty storicoVisite}">
@@ -255,7 +255,7 @@
         </c:forEach>
     ];
 
-    // --- 1. RICERCA MEDICO ---
+    // --- 1. RICERCA MEDICO (MODIFICATA PER SPECIALIZZAZIONE) ---
     searchInput.addEventListener('input', function() {
         const query = this.value.toLowerCase();
         suggestionsDiv.innerHTML = '';
@@ -269,13 +269,18 @@
 
         if(query.length === 0) { suggestionsDiv.style.display = 'none'; return; }
 
-        const matches = mediciDemo.filter(m => (m.nome.toLowerCase() + " " + m.cognome.toLowerCase()).includes(query));
+        // NUOVA LOGICA: Cerca nel Nome, Cognome OPPURE Specializzazione
+        // Concateniamo tutto in una stringa per permettere ricerche tipo "Rossi Cardiologo"
+        const matches = mediciDemo.filter(m => {
+            const searchableText = (m.nome + " " + m.cognome + " " + m.spec).toLowerCase();
+            return searchableText.includes(query);
+        });
 
         if (matches.length > 0) {
             matches.forEach(medico => {
                 const div = document.createElement('div');
                 div.className = 'suggestion-item';
-                div.innerHTML = '<strong>Dr. ' + medico.nome + ' ' + medico.cognome + '</strong><small>' + medico.spec + '</small>';
+                div.innerHTML = '<strong>Dr. ' + medico.nome + ' ' + medico.cognome + '</strong><br><small style="color:#666">' + medico.spec + '</small>';
 
                 div.addEventListener('click', function() {
                     selezionaMedico(medico.id, 'Dr. ' + medico.cognome + ' (' + medico.spec + ')');
@@ -342,7 +347,7 @@
             });
     }
 
-    // --- 4. FILTRO STORICO (AGGIUNTO) ---
+    // --- 4. FILTRO STORICO ---
     const filterInput = document.getElementById('filterSearch');
     const historyRows = document.querySelectorAll('.history-row');
 

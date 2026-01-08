@@ -87,7 +87,7 @@ public class AuthController {
                     return "redirect:/medico";
                 case "PAZIENTE":
                     String queryCerca = (cerca != null && !cerca.isEmpty()) ? "?cerca=" + cerca : "";
-                    return "redirect:/paziente" + queryCerca;
+                    return "redirect:/" + queryCerca;
                 default:
                     return "redirect:/";
             }
