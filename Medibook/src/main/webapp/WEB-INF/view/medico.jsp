@@ -33,6 +33,14 @@
         .btn-vedi { background-color: #6c757d; }
         .btn-vedi:hover { background-color: #545b62; }
 
+        /* Nuovo pulsante info paziente */
+        .btn-info-paziente {
+            background: none; border: none; color: #007bff;
+            cursor: pointer; font-size: 1.1em; margin-left: 8px;
+            transition: transform 0.2s;
+        }
+        .btn-info-paziente:hover { transform: scale(1.2); color: #0056b3; }
+
         .btn-group { display: flex; gap: 5px; }
 
         /* Sezioni */
@@ -87,7 +95,7 @@
         }
         .nav-link-custom:hover { color: #007bff; }
 
-        /* Modale */
+        /* Modale Generale */
         .modal-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: rgba(0, 0, 0, 0.5); z-index: 9999;
@@ -98,7 +106,24 @@
             background: white; padding: 25px; border-radius: 10px;
             max-width: 400px; width: 90%; text-align: center;
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            position: relative;
         }
+
+        /* Stili specifici per dettaglio paziente */
+        .patient-detail-row {
+            display: flex; align-items: center; gap: 10px;
+            margin-bottom: 12px; padding-bottom: 8px;
+            border-bottom: 1px solid #f0f0f0; text-align: left;
+        }
+        .patient-detail-row i { color: #007bff; width: 20px; text-align: center; }
+        .patient-detail-label { font-weight: bold; color: #555; font-size: 0.9em; display: block; }
+        .patient-detail-value { color: #333; font-size: 1em; }
+        .close-modal-btn {
+            position: absolute; top: 15px; right: 20px;
+            background: none; border: none; font-size: 1.5em; cursor: pointer; color: #aaa;
+        }
+        .close-modal-btn:hover { color: #333; }
+
         .modal-buttons { display: flex; justify-content: center; gap: 15px; margin-top: 20px; }
         .btn-modal { padding: 10px 20px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; }
         .btn-cancel { background-color: #e2e6ea; color: #333; }
@@ -215,7 +240,19 @@
                         <i class="fa-regular fa-calendar"></i> ${v.data}<br>
                         <i class="fa-regular fa-clock"></i> ${v.ora}
                     </td>
-                    <td><strong>${v.paziente.nome} ${v.paziente.cognome}</strong></td>
+                    <td>
+                        <strong>${v.paziente.nome} ${v.paziente.cognome}</strong>
+
+                        <button type="button" class="btn-info-paziente" title="Vedi dettagli paziente"
+                                onclick="mostraPaziente(this)"
+                                data-nome="${v.paziente.nome} ${v.paziente.cognome}"
+                                data-cf="${v.paziente.codiceFiscale}"
+                                data-email="${v.paziente.email}"
+                                data-tel="${v.paziente.telefono}"
+                                data-ind="${v.paziente.indirizzo}">
+                            <i class="fa-solid fa-circle-info"></i>
+                        </button>
+                    </td>
 
                     <td>
                         <c:choose>
@@ -334,11 +371,67 @@
 <div id="modalConferma" class="modal-overlay">
     <div class="modal-box">
         <div style="font-size: 40px; margin-bottom: 10px;">⚠️</div>
-        <div class="modal-title">Conferma Azione</div>
+        <div class="modal-title" style="font-size: 1.2em; font-weight:bold;">Conferma Azione</div>
         <p class="modal-text" id="modalMessaggio">Sei sicuro?</p>
         <div class="modal-buttons">
-            <button class="btn-modal btn-cancel" onclick="chiudiModal()">No, indietro</button>
+            <button class="btn-modal btn-cancel" onclick="chiudiModalConferma()">No, indietro</button>
             <button class="btn-modal btn-confirm" id="btnConfermaFinale" onclick="procediConInvio()">Sì, procedi</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalPaziente" class="modal-overlay">
+    <div class="modal-box" style="text-align: left;">
+        <button class="close-modal-btn" onclick="chiudiModalPaziente()">&times;</button>
+
+        <h3 style="margin-top:0; color: #007bff; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+            <i class="fa-solid fa-id-card"></i> Scheda Paziente
+        </h3>
+
+        <div style="margin-top: 20px;">
+            <div class="patient-detail-row">
+                <i class="fa-solid fa-user"></i>
+                <div>
+                    <span class="patient-detail-label">Nome e Cognome</span>
+                    <span class="patient-detail-value" id="pazNome"></span>
+                </div>
+            </div>
+
+            <div class="patient-detail-row">
+                <i class="fa-solid fa-barcode"></i>
+                <div>
+                    <span class="patient-detail-label">Codice Fiscale</span>
+                    <span class="patient-detail-value" id="pazCF"></span>
+                </div>
+            </div>
+
+            <div class="patient-detail-row">
+                <i class="fa-solid fa-envelope"></i>
+                <div>
+                    <span class="patient-detail-label">Email</span>
+                    <span class="patient-detail-value" id="pazEmail"></span>
+                </div>
+            </div>
+
+            <div class="patient-detail-row">
+                <i class="fa-solid fa-phone"></i>
+                <div>
+                    <span class="patient-detail-label">Telefono</span>
+                    <span class="patient-detail-value" id="pazTel"></span>
+                </div>
+            </div>
+
+            <div class="patient-detail-row" style="border-bottom: none;">
+                <i class="fa-solid fa-map-location-dot"></i>
+                <div>
+                    <span class="patient-detail-label">Indirizzo</span>
+                    <span class="patient-detail-value" id="pazInd"></span>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 20px;">
+            <button class="btn-modal btn-confirm" style="width: 100%;" onclick="chiudiModalPaziente()">Chiudi</button>
         </div>
     </div>
 </div>
@@ -346,16 +439,11 @@
 <script>
     // --- FUNZIONALITÀ FILTRO E ORDINAMENTO ---
 
-    // Filtra per Data Odierna
     function filtraOggi() {
-        // Otteniamo la data di oggi in formato yyyy-MM-dd e dd/MM/yyyy
         const oggi = new Date();
-
-        // Formato IT: dd/mm/yyyy
         const dd = String(oggi.getDate()).padStart(2, '0');
-        const mm = String(oggi.getMonth() + 1).padStart(2, '0'); // Gennaio è 0!
+        const mm = String(oggi.getMonth() + 1).padStart(2, '0');
         const yyyy = oggi.getFullYear();
-
         const oggiIT = dd + '/' + mm + '/' + yyyy;
         const oggiISO = yyyy + '-' + mm + '-' + dd;
 
@@ -367,7 +455,6 @@
             let dateCell = rows[i].getElementsByTagName('td')[0];
             if (dateCell) {
                 let cellText = dateCell.innerText;
-                // Controlliamo se contiene la data di oggi in uno dei due formati
                 if (cellText.includes(oggiIT) || cellText.includes(oggiISO)) {
                     rows[i].style.display = '';
                     visibleCount++;
@@ -379,72 +466,48 @@
         document.getElementById('noResultsMsg').style.display = (visibleCount === 0) ? 'block' : 'none';
     }
 
-    // Mostra tutte le righe (Reset)
     function mostraTutte() {
         let rows = document.querySelectorAll('#tabellaDaGestire tbody tr');
         rows.forEach(row => row.style.display = '');
         document.getElementById('noResultsMsg').style.display = 'none';
     }
 
-    // Ordinamento (Bubble Sort semplice su righe HTML)
     function ordinaDate(direzione) {
-        // Mostra prima tutte le righe nascoste
         mostraTutte();
-
         let table = document.getElementById("tabellaDaGestire");
         let tbody = table.querySelector("tbody");
         let rows = Array.from(tbody.querySelectorAll("tr"));
 
         rows.sort((a, b) => {
-            // Estraiamo il testo della data (cella 0)
-            let dateTextA = a.cells[0].innerText.trim(); // es. "2025-05-12 10:30"
+            let dateTextA = a.cells[0].innerText.trim();
             let dateTextB = b.cells[0].innerText.trim();
-
-            // Convertiamo in oggetti Date per il confronto
             let dateA = parseCustomDate(dateTextA);
             let dateB = parseCustomDate(dateTextB);
 
-            if (direzione === 'asc') {
-                return dateA - dateB;
-            } else {
-                return dateB - dateA;
-            }
+            if (direzione === 'asc') return dateA - dateB;
+            else return dateB - dateA;
         });
-
-        // Riaccoda le righe ordinate nel tbody
         rows.forEach(row => tbody.appendChild(row));
     }
 
-    // Helper per parsare la data mista (ISO o IT)
     function parseCustomDate(str) {
-        // Rimuove eventuali icone o spazi extra, prende solo i primi caratteri che sembrano una data
-        // La cella contiene data \n ora. Prendiamo tutto.
-
-        // Proviamo a vedere se è ISO (yyyy-mm-dd) o IT (dd/mm/yyyy)
-        // Regex semplice per data ISO: 4 cifre - 2 cifre - 2 cifre
         const isoMatch = str.match(/(\d{4})-(\d{2})-(\d{2})/);
         if (isoMatch) {
-            // È ISO, costruiamo la data aggiungendo l'ora se presente
-            // Cerca l'ora HH:mm
             const timeMatch = str.match(/(\d{2}):(\d{2})/);
             let timeStr = timeMatch ? "T" + timeMatch[0] + ":00" : "T00:00:00";
             return new Date(isoMatch[0] + timeStr);
         }
-
-        // Regex per data IT: 2 cifre / 2 cifre / 4 cifre
         const itMatch = str.match(/(\d{2})\/(\d{2})\/(\d{4})/);
         if (itMatch) {
-            // Convertiamo in ISO per il costruttore Date: yyyy-mm-dd
             let isoStr = itMatch[3] + "-" + itMatch[2] + "-" + itMatch[1];
             const timeMatch = str.match(/(\d{2}):(\d{2})/);
             let timeStr = timeMatch ? "T" + timeMatch[0] + ":00" : "T00:00:00";
             return new Date(isoStr + timeStr);
         }
-
-        return new Date(0); // Fallback
+        return new Date(0);
     }
 
-    // --- MODALE JS ---
+    // --- MODALE CONFERMA AZIONE ---
     let formDaInviareId = null;
 
     function chiediConferma(formId, messaggio, testoBottone = "Sì, procedi") {
@@ -458,24 +521,40 @@
         } else {
             btn.style.backgroundColor = '#28a745';
         }
-
         document.getElementById('modalConferma').classList.add('active');
     }
 
-    function chiudiModal() {
+    function chiudiModalConferma() {
         document.getElementById('modalConferma').classList.remove('active');
         formDaInviareId = null;
     }
 
     function procediConInvio() {
-        if (formDaInviareId) {
-            document.getElementById(formDaInviareId).submit();
-        }
+        if (formDaInviareId) document.getElementById(formDaInviareId).submit();
     }
 
-    document.getElementById('modalConferma').addEventListener('click', function(e) {
-        if (e.target === this) chiudiModal();
-    });
+    // --- MODALE DETTAGLI PAZIENTE ---
+    function mostraPaziente(btn) {
+        // Legge i dati dagli attributi data- del bottone cliccato
+        document.getElementById('pazNome').innerText = btn.getAttribute('data-nome') || "N/D";
+        document.getElementById('pazCF').innerText = btn.getAttribute('data-cf') || "N/D";
+        document.getElementById('pazEmail').innerText = btn.getAttribute('data-email') || "N/D";
+        document.getElementById('pazTel').innerText = btn.getAttribute('data-tel') || "N/D";
+        document.getElementById('pazInd').innerText = btn.getAttribute('data-ind') || "N/D";
+
+        document.getElementById('modalPaziente').classList.add('active');
+    }
+
+    function chiudiModalPaziente() {
+        document.getElementById('modalPaziente').classList.remove('active');
+    }
+
+    // Chiusura modali cliccando fuori
+    window.onclick = function(e) {
+        if (e.target.classList.contains('modal-overlay')) {
+            e.target.classList.remove('active');
+        }
+    }
 </script>
 
 </body>
