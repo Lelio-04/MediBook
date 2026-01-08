@@ -2,6 +2,7 @@ package it.unisa.medibook.control;
 
 import it.unisa.medibook.model.Prenotazione;
 import it.unisa.medibook.model.Referto;
+import it.unisa.medibook.model.SegreteriaPrenotazioni;
 import it.unisa.medibook.model.Utente;
 import it.unisa.medibook.modelService.EmailService; // <--- 1. Import EmailService
 import it.unisa.medibook.modelService.GestionePrenotazioni;
@@ -40,24 +41,33 @@ public class SegreteriaPrenotazioniController {
 
     @GetMapping("/dashboard")
     public String dashboard(@RequestParam(required = false) String q,
+                            @RequestParam(required = false) String filtro, // <--- NUOVO PARAMETRO
                             HttpSession session,
                             Model model) {
 
         Utente utente = (Utente) session.getAttribute("utente");
-        if (utente == null || !"SEGRETERIA".equals(utente.getRuolo())) {
+        if (utente == null || !(utente instanceof SegreteriaPrenotazioni)) {
             return "redirect:/";
         }
 
-        if (q != null && !q.trim().isEmpty()) {
+        // LOGICA DI FILTRAGGIO
+        if ("oggi".equals(filtro)) {
+            // CASO 1: Filtro OGGI
+            model.addAttribute("listaPrenotazioni", prenotazioneRepository.findByData(LocalDate.now()));
+            model.addAttribute("filtroAttivo", "oggi"); // Per evidenziare il bottone o mostrare messaggi
+        }
+        else if (q != null && !q.trim().isEmpty()) {
+            // CASO 2: Ricerca per testo
             model.addAttribute("listaPrenotazioni",
                     prenotazioneRepository.findByPazienteNomeContainingIgnoreCaseOrPazienteCognomeContainingIgnoreCase(q, q));
             model.addAttribute("searchKeyword", q);
-        } else {
+        }
+        else {
+            // CASO 3: Mostra tutto (Default)
             model.addAttribute("listaPrenotazioni", prenotazioneRepository.findAll());
         }
 
         model.addAttribute("oggi", LocalDate.now());
-
         return "dashboard-agenda";
     }
 

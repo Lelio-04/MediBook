@@ -25,4 +25,6 @@ public interface PrenotazioneRepository extends JpaRepository<Prenotazione, Inte
     List<Prenotazione> findByMedicoIdAndStato(Integer medicoId, String stato);
     List<Prenotazione> findByMedicoIdAndData(Integer medicoId, LocalDate data);
     List<Prenotazione> findByPazienteNomeContainingIgnoreCaseOrPazienteCognomeContainingIgnoreCase(String nome, String cognome);
+
+    List<Prenotazione> findByData(LocalDate data);
 }

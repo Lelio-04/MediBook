@@ -13,7 +13,7 @@
     <script src="https://npmcdn.com/flatpickr/dist/l10n/it.js"></script>
 
     <style>
-        /* Stili identici a prima */
+        /* Stili Personalizzati */
         .autocomplete-container { position: relative; width: 100%; }
         .suggestions-list {
             position: absolute; top: 100%; left: 0; right: 0;
@@ -23,21 +23,27 @@
         }
         .suggestion-item { padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
         .suggestion-item:hover { background-color: #eef5ff; color: #007bff; }
+
         .stato-badge { padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; display: inline-block; letter-spacing: 0.5px; }
         .stato-prenotata { background-color: #cce5ff; color: #004085; border: 1px solid #b8daff; }
         .stato-attesa { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
         .stato-conclusa { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .stato-annullata { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 9999; align-items: center; justify-content: center; }
         .modal-overlay.active { display: flex; animation: fadeIn 0.3s ease-out; }
         .modal-box { background: white; padding: 30px; border-radius: 12px; max-width: 400px; width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2); text-align: center; }
         .modal-btn { background-color: #007bff; color: white; border: none; padding: 12px 25px; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: 500; width: 100%; transition: opacity 0.2s; }
         .modal-btn:hover { opacity: 0.9; }
+
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
         .btn-tabella { text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 13px; font-weight: bold; transition: background 0.2s; display: inline-block;}
         .btn-leggi { background-color: #17a2b8; color: white; }
+
         .card { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); padding: 25px; border: 1px solid #eee; margin-bottom: 20px; }
         .card h3 { margin-top: 0; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; margin-bottom: 20px; color: #333; }
+
         .empty-state { text-align: center; color: #777; padding: 20px; font-style: italic; }
         select.loading { color: #999; font-style: italic; }
         table { width: 100%; border-collapse: collapse; }
@@ -54,6 +60,9 @@
     </div>
     <div style="display: flex; gap: 15px; align-items: center;">
         <a href="${pageContext.request.contextPath}/" class="btn" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid white; font-size: 14px; padding: 8px 15px; text-decoration: none; border-radius: 5px;">🏠 Home Page</a>
+
+        <a href="${pageContext.request.contextPath}/paziente/profilo" class="btn" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid white; font-size: 14px; padding: 8px 15px; text-decoration: none; border-radius: 5px;">👤 Il mio Profilo</a>
+
         <a href="${pageContext.request.contextPath}/logout" class="btn btn-danger" style="background: #dc3545; color: white; padding: 8px 15px; text-decoration: none; border-radius: 5px; font-size: 14px;">Logout</a>
     </div>
 </header>
@@ -129,6 +138,7 @@
         </div>
 
         <div style="flex: 1.5; min-width: 300px;">
+
             <div class="card">
                 <h3>⏰ Prossimi Appuntamenti</h3>
                 <c:choose>
@@ -142,7 +152,7 @@
                             <c:forEach items="${visiteFuture}" var="v">
                                 <tr>
                                     <td><strong>${v.data}</strong><br><small>${v.ora}</small></td>
-                                    <td>Dr. ${v.medico.cognome}</td>
+                                    <td>Dr. ${v.medico.cognome}<br><small>${v.medico.specializzazione}</small></td>
                                     <td><span class="stato-badge stato-prenotata">${v.stato}</span></td>
                                 </tr>
                             </c:forEach>
@@ -155,7 +165,7 @@
             <div class="card">
                 <h3>📂 Storico Visite</h3>
                 <div style="margin-bottom: 15px;">
-                    <input type="text" id="filterSearch" placeholder="🔍 Filtra storico (medico)..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                    <input type="text" id="filterSearch" placeholder="🔍 Filtra storico (medico, data, specializzazione)..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
                 </div>
                 <c:choose>
                     <c:when test="${empty storicoVisite}">
@@ -168,7 +178,7 @@
                                 <tbody>
                                 <c:forEach items="${storicoVisite}" var="v">
                                     <tr class="history-row"
-                                        data-search="${v.medico.nome} ${v.medico.cognome} ${v.medico.specializzazione}">
+                                        data-search="${v.medico.nome} ${v.medico.cognome} ${v.medico.specializzazione} ${v.data}">
 
                                         <td style="padding: 10px; border-bottom: 1px solid #eee; color: #555;">
                                                 ${v.data}
@@ -238,7 +248,7 @@
     }
     function chiudiPopup() { popup.classList.remove('active'); }
 
-    // --- FLATPICKR ---
+    // --- FLATPICKR (CALENDARIO) ---
     let calendarInstance = flatpickr("#dataInput", {
         locale: "it",
         minDate: "today",
@@ -248,16 +258,18 @@
         }
     });
 
-    // --- LISTA MEDICI (JSP) ---
+    // --- LISTA MEDICI (JSP -> JS ARRAY) ---
     const mediciDemo = [
         <c:forEach items="${listaMedici}" var="m">
         { id: "${m.id}", nome: "${m.nome}", cognome: "${m.cognome}", spec: "${m.specializzazione}" },
         </c:forEach>
     ];
 
-    // --- 1. RICERCA MEDICO (MODIFICATA PER SPECIALIZZAZIONE) ---
+    // --- 1. RICERCA MEDICO (MULTIFIELD) ---
     searchInput.addEventListener('input', function() {
         const query = this.value.toLowerCase();
+
+        // Reset interfaccia quando si scrive
         suggestionsDiv.innerHTML = '';
         hiddenIdInput.value = "";
         dateInput.disabled = true;
@@ -269,18 +281,20 @@
 
         if(query.length === 0) { suggestionsDiv.style.display = 'none'; return; }
 
-        // NUOVA LOGICA: Cerca nel Nome, Cognome OPPURE Specializzazione
-        // Concateniamo tutto in una stringa per permettere ricerche tipo "Rossi Cardiologo"
+        // --- FILTRAGGIO AVANZATO ---
+        // Controlla se il termine di ricerca è presente in Nome, Cognome o Specializzazione
         const matches = mediciDemo.filter(m => {
-            const searchableText = (m.nome + " " + m.cognome + " " + m.spec).toLowerCase();
-            return searchableText.includes(query);
+            const fullString = (m.nome + " " + m.cognome + " " + m.spec).toLowerCase();
+            return fullString.includes(query);
         });
 
+        // Mostra suggerimenti
         if (matches.length > 0) {
             matches.forEach(medico => {
                 const div = document.createElement('div');
                 div.className = 'suggestion-item';
-                div.innerHTML = '<strong>Dr. ' + medico.nome + ' ' + medico.cognome + '</strong><br><small style="color:#666">' + medico.spec + '</small>';
+                // Evidenzia la specializzazione
+                div.innerHTML = '<strong>Dr. ' + medico.nome + ' ' + medico.cognome + '</strong><br><small style="color:#007bff; font-weight:bold;">' + medico.spec + '</small>';
 
                 div.addEventListener('click', function() {
                     selezionaMedico(medico.id, 'Dr. ' + medico.cognome + ' (' + medico.spec + ')');
@@ -299,31 +313,37 @@
         configuraCalendarioPerMedico(id);
     }
 
-    // --- 2. CONFIGURAZIONE CALENDARIO ---
+    // --- 2. CONFIGURAZIONE CALENDARIO (AJAX) ---
     function configuraCalendarioPerMedico(medicoId) {
-        dateInput.placeholder = "Caricamento...";
+        dateInput.placeholder = "Caricamento disponibilità...";
+
         fetch('${pageContext.request.contextPath}/paziente/api/giorni-lavoro?medicoId=' + medicoId)
             .then(res => res.json())
             .then(giorniLavorativi => {
                 dateInput.disabled = false;
-                dateInput.placeholder = "Seleziona data";
+                dateInput.placeholder = "Seleziona una data";
+
+                // Configura Flatpickr per abilitare solo i giorni giusti
                 calendarInstance.set('disable', [
                     function(date) {
-                        let jsDay = date.getDay();
-                        let javaDay = (jsDay === 0) ? 7 : jsDay;
+                        let jsDay = date.getDay(); // 0=Dom, 1=Lun...
+                        let javaDay = (jsDay === 0) ? 7 : jsDay; // Converti per il Backend (1=Lun... 7=Dom)
                         return !giorniLavorativi.includes(javaDay);
                     }
                 ]);
             })
-            .catch(err => console.error("Errore API Giorni:", err));
+            .catch(err => {
+                console.error("Errore API Giorni:", err);
+                dateInput.placeholder = "Errore caricamento";
+            });
     }
 
-    // --- 3. CARICAMENTO ORARI ---
+    // --- 3. CARICAMENTO ORARI (AJAX) ---
     function caricaOrariDisponibili(dataStr) {
         const medicoId = hiddenIdInput.value;
         if(!medicoId || !dataStr) return;
 
-        oraSelect.innerHTML = "<option>Caricamento...</option>";
+        oraSelect.innerHTML = "<option>Caricamento orari...</option>";
         oraSelect.classList.add('loading');
         oraSelect.disabled = true;
 
@@ -332,18 +352,19 @@
             .then(orari => {
                 oraSelect.classList.remove('loading');
                 oraSelect.innerHTML = "";
+
                 if(orari.length === 0) {
                     oraSelect.innerHTML = "<option value=''>Nessun posto libero</option>";
                     oraSelect.disabled = true;
                 } else {
                     oraSelect.disabled = false;
-                    oraSelect.add(new Option("-- Scegli orario --", ""));
+                    oraSelect.add(new Option("-- Seleziona Orario --", ""));
                     orari.forEach(ora => oraSelect.add(new Option(ora, ora)));
                 }
             })
             .catch(err => {
                 console.error("Errore API Orari:", err);
-                oraSelect.innerHTML = "<option>Errore</option>";
+                oraSelect.innerHTML = "<option>Errore nel caricamento</option>";
             });
     }
 
@@ -355,19 +376,19 @@
         filterInput.addEventListener('keyup', function() {
             const term = this.value.toLowerCase();
             historyRows.forEach(row => {
-                // Recupera il testo da cercare dall'attributo data-search
+                // Legge i dati nascosti nella riga (medico, spec, data)
                 const searchText = row.getAttribute('data-search').toLowerCase();
-                // Mostra o nascondi la riga
+
                 if (searchText.includes(term)) {
-                    row.style.display = ''; // Visibile
+                    row.style.display = '';
                 } else {
-                    row.style.display = 'none'; // Nascosto
+                    row.style.display = 'none';
                 }
             });
         });
     }
 
-    // --- AUTO-ATTIVAZIONE ---
+    // --- AUTO-ATTIVAZIONE (Se ricarico pagina con errore) ---
     window.addEventListener('DOMContentLoaded', (event) => {
         const idPrecaricato = hiddenIdInput.value;
         if(idPrecaricato && idPrecaricato.trim() !== "") {
@@ -375,17 +396,19 @@
         }
     });
 
+    // Validazione Form
     document.getElementById('bookingForm').addEventListener('submit', function(e) {
         if(!hiddenIdInput.value) {
             e.preventDefault();
             errorMsg.style.display = 'block';
-            mostraPopup("Devi selezionare un medico valido.", "Errore");
+            mostraPopup("Devi selezionare un medico valido dalla lista suggerita.", "Errore Medico");
         } else if (!oraSelect.value) {
             e.preventDefault();
-            mostraPopup("Devi selezionare un orario valido.", "Errore");
+            mostraPopup("Devi selezionare un orario valido.", "Errore Orario");
         }
     });
 
+    // Chiudi suggerimenti se clicco fuori
     document.addEventListener('click', function(e) {
         if (!searchInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
             suggestionsDiv.style.display = 'none';
