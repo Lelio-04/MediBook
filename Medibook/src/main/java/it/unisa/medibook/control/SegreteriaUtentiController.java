@@ -4,6 +4,7 @@ import it.unisa.medibook.model.Paziente;
 import it.unisa.medibook.model.Prenotazione;
 import it.unisa.medibook.model.SegreteriaUtenti;
 import it.unisa.medibook.model.Utente;
+import it.unisa.medibook.modelService.EmailService; // <--- 1. Import Service Email
 import it.unisa.medibook.modelStorage.PazienteRepository;
 import it.unisa.medibook.modelStorage.PrenotazioneRepository;
 import jakarta.servlet.http.HttpSession;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
 
@@ -24,7 +26,8 @@ public class SegreteriaUtentiController {
     @Autowired
     private PrenotazioneRepository prenotazioneRepository;
 
-    // RIMOSSO PasswordEncoder perché salviamo in chiaro come richiesto
+    @Autowired
+    private EmailService emailService; // <--- 2. Iniezione EmailService
 
     // --- METODO DI SICUREZZA ---
     private boolean isAutorizzato(HttpSession session) {
@@ -89,44 +92,59 @@ public class SegreteriaUtentiController {
     }
 
     // ============================================================
-    // 5. SALVATAGGIO (IN CHIARO)
-    // ============================================================
-    // ... codice precedente uguale ...
-
-    // ============================================================
-    // 5. SALVATAGGIO (IN CHIARO)
+    // 5. SALVATAGGIO (CON INVIO EMAIL)
     // ============================================================
     @PostMapping("/salva")
-    public String salvaPaziente(@ModelAttribute Paziente p, HttpSession session) {
+    public String salvaPaziente(@ModelAttribute Paziente p,
+                                HttpSession session,
+                                RedirectAttributes redirectAttributes) {
+
         if (!isAutorizzato(session)) return "redirect:/accedi";
 
+        // --- NUOVO PAZIENTE ---
         if (p.getId() == null) {
-            // --- NUOVO PAZIENTE ---
-            p.setPassword("Medibook123");
+            String passwordProvvisoria = "Medibook123";
+
+            p.setPassword(passwordProvvisoria);
             p.setRuolo("PAZIENTE");
+
+            // Salvataggio nel DB
             pazienteRepository.save(p);
 
-            return "redirect:/segreteria-utenti/dashboard?msg=Utente creato. Password provvisoria: Medibook123";
+            // --- 3. INVIO EMAIL BENVENUTO ---
+            try {
+                if (p.getEmail() != null && !p.getEmail().isEmpty()) {
+                    emailService.inviaEmailBenvenuto(
+                            p.getEmail(),
+                            p.getNome(),
+                            p.getCognome(),
+                            passwordProvvisoria
+                    );
+                }
+            } catch (Exception e) {
+                // Non blocchiamo la creazione se l'email fallisce, ma lo notifichiamo
+                System.err.println("Errore invio email benvenuto: " + e.getMessage());
+            }
+
+            return "redirect:/segreteria-utenti/dashboard?msg=Utente creato e Email inviata!";
 
         } else {
             // --- MODIFICA ESISTENTE ---
             Paziente esistente = pazienteRepository.findById(p.getId()).orElse(null);
 
             if (esistente != null) {
-                // Aggiorniamo i dati modificabili
                 esistente.setNome(p.getNome());
                 esistente.setCognome(p.getCognome());
                 esistente.setCodiceFiscale(p.getCodiceFiscale());
                 esistente.setTelefono(p.getTelefono());
                 esistente.setIndirizzo(p.getIndirizzo());
 
-                // NOTA IMPORTANTE:
-                // Abbiamo rimosso: esistente.setEmail(p.getEmail());
-                // Così la mail vecchia rimane nel database anche se qualcuno prova a forzarla.
+                // Manteniamo la regola: l'email non si cambia in modifica per sicurezza
+                // esistente.setEmail(p.getEmail()); RIMOSSO
 
                 pazienteRepository.save(esistente);
             }
-            return "redirect:/segreteria-utenti/dashboard?msg=Aggiornato (Email invariata)";
+            return "redirect:/segreteria-utenti/dashboard?msg=Dati Paziente Aggiornati";
         }
     }
 }

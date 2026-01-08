@@ -1,10 +1,11 @@
 package it.unisa.medibook.control;
 
-import it.unisa.medibook.model.Medico; // <--- Importante: Import aggiunto
+import it.unisa.medibook.model.Medico;
 import it.unisa.medibook.model.Paziente;
 import it.unisa.medibook.model.Prenotazione;
 import it.unisa.medibook.model.Referto;
 import it.unisa.medibook.model.Utente;
+import it.unisa.medibook.modelService.EmailService; // <--- 1. Import EmailService
 import it.unisa.medibook.modelService.GestioneMedico;
 import it.unisa.medibook.modelService.GestionePrenotazioni;
 import it.unisa.medibook.modelService.GestioneReferti;
@@ -17,6 +18,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter; // <--- Import per formattare la data
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -32,6 +34,9 @@ public class PazienteController {
 
     @Autowired
     private GestioneReferti gestioneReferti;
+
+    @Autowired
+    private EmailService emailService; // <--- 2. Iniezione Service Email
 
     @GetMapping("")
     public String dashboardPaziente(HttpSession session, Model model) {
@@ -81,7 +86,39 @@ public class PazienteController {
             LocalDate dataL = LocalDate.parse(data);
             LocalTime oraL = LocalTime.parse(ora);
 
+            // 1. Eseguiamo la prenotazione
             gestionePrenotazioni.nuovaPrenotazione(utente.getId(), idMedico, dataL, oraL);
+
+            // --- 3. LOGICA INVIO EMAIL DI CONFERMA ---
+            try {
+                if (utente instanceof Paziente) {
+                    Paziente p = (Paziente) utente;
+
+                    // Recuperiamo i dati del medico per scriverli nell'email
+                    Medico m = gestioneMedico.getMedicoById(idMedico);
+
+                    if (p.getEmail() != null && !p.getEmail().isEmpty()) {
+                        String nomePaziente = p.getNome() + " " + p.getCognome();
+                        String nomeMedico = (m != null) ? m.getCognome() : "Specialista";
+
+                        String dataFormat = dataL.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                        String oraFormat = oraL.toString();
+
+                        // Invio effettivo
+                        emailService.inviaEmailConferma(
+                                p.getEmail(),
+                                nomePaziente,
+                                nomeMedico,
+                                dataFormat,
+                                oraFormat
+                        );
+                    }
+                }
+            } catch (Exception e) {
+                // Se l'email fallisce, stampiamo l'errore ma NON blocchiamo la prenotazione
+                System.err.println("Errore invio email conferma: " + e.getMessage());
+            }
+            // -----------------------------------------
 
             redirectAttributes.addAttribute("successo", "true");
 
@@ -128,19 +165,17 @@ public class PazienteController {
 
         return "paziente_visualizza_referto";
     }
+
     @GetMapping("/api/giorni-lavoro")
     @ResponseBody
     public List<Integer> getGiorniLavoro(@RequestParam Integer medicoId) {
-        // Chiama il nuovo metodo del Service
         return gestionePrenotazioni.getGiorniLavorativi(medicoId);
     }
 
-    // 2. Restituisce gli orari per la tendina
     @GetMapping("/api/orari-disponibili")
     @ResponseBody
     public List<LocalTime> getOrari(@RequestParam Integer medicoId, @RequestParam String data) {
         LocalDate dataScelta = LocalDate.parse(data);
-        // Chiama il nuovo metodo del Service
         return gestionePrenotazioni.getOrariLiberi(medicoId, dataScelta);
     }
 }

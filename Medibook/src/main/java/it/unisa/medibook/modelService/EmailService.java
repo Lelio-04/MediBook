@@ -13,36 +13,150 @@ public class EmailService {
     @Autowired
     private JavaMailSender mailSender;
 
+    // 1. MODIFICA APPUNTAMENTO (Per Segreteria -> Paziente)
     public void inviaEmailModifica(String destinatario, String oggetto,
                                    String nomePaziente, String nomeMedico,
                                    String nuovaData, String nuovaOra) {
         try {
-            // 1. Creiamo un messaggio di tipo MIME (supporta HTML)
             MimeMessage message = mailSender.createMimeMessage();
-
-            // "true" indica che stiamo inviando un messaggio multipart (con allegati o HTML)
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            helper.setFrom("tuaemail@gmail.com"); // Metti la tua email qui
+            helper.setFrom("tuaemail@gmail.com");
             helper.setTo(destinatario);
             helper.setSubject(oggetto);
 
-            // 2. Costruiamo il contenuto HTML
-            String htmlContent = costruisciHtml(nomePaziente, nomeMedico, nuovaData, nuovaOra);
-
-            // 3. Impostiamo il testo dicendo che è HTML (true)
+            String htmlContent = costruisciHtmlModifica(nomePaziente, nomeMedico, nuovaData, nuovaOra);
             helper.setText(htmlContent, true);
 
             mailSender.send(message);
-            System.out.println("Email HTML inviata a: " + destinatario);
+            System.out.println("Email Modifica inviata a: " + destinatario);
 
         } catch (MessagingException e) {
-            System.err.println("Errore creazione email: " + e.getMessage());
+            System.err.println("Errore creazione email modifica: " + e.getMessage());
         }
     }
 
-    // Metodo privato che genera il design dell'email
-    private String costruisciHtml(String nome, String medico, String data, String ora) {
+    // 2. CONFERMA PRENOTAZIONE (Per Paziente -> Paziente)
+    public void inviaEmailConferma(String destinatario, String nomePaziente,
+                                   String nomeMedico, String data, String ora) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom("tuaemail@gmail.com");
+            helper.setTo(destinatario);
+            helper.setSubject("✅ Conferma Prenotazione - MediBook");
+
+            String htmlContent = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: sans-serif; background-color: #f4f4f4; padding: 20px; }
+                    .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .header { background-color: #28a745; color: white; padding: 20px; text-align: center; }
+                    .content { padding: 30px; color: #333; line-height: 1.6; }
+                    .box-info { background-color: #e8f5e9; border-left: 5px solid #28a745; padding: 15px; margin: 20px 0; }
+                    .footer { text-align: center; padding: 20px; font-size: 12px; color: #777; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>Prenotazione Confermata!</h1>
+                    </div>
+                    <div class="content">
+                        <p>Ciao <strong>%s</strong>,</p>
+                        <p>La tua richiesta di prenotazione è andata a buon fine.</p>
+                        
+                        <div class="box-info">
+                            <p>👨‍⚕️ <strong>Medico:</strong> Dott. %s</p>
+                            <p>📅 <strong>Data:</strong> %s</p>
+                            <p>🕒 <strong>Ora:</strong> %s</p>
+                        </div>
+                        <p>Ti ricordiamo di presentarti con 10 minuti di anticipo.</p>
+                    </div>
+                    <div class="footer">MediBook System - Email Automatica</div>
+                </div>
+            </body>
+            </html>
+            """.formatted(nomePaziente, nomeMedico, data, ora);
+
+            helper.setText(htmlContent, true);
+            mailSender.send(message);
+
+        } catch (MessagingException e) {
+            System.err.println("Errore invio email conferma: " + e.getMessage());
+        }
+    }
+
+    // 3. BENVENUTO E CREDENZIALI (Per Segreteria -> Nuovo Paziente)
+    public void inviaEmailBenvenuto(String destinatario, String nome, String cognome, String passwordTemp) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom("tuaemail@gmail.com");
+            helper.setTo(destinatario);
+            helper.setSubject("🎉 Benvenuto in MediBook - Attivazione Account");
+
+            String htmlContent = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: 'Helvetica', sans-serif; background-color: #f0f2f5; padding: 20px; }
+                    .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+                    .header { background-color: #007bff; color: white; padding: 25px; text-align: center; }
+                    .content { padding: 30px; color: #444; line-height: 1.6; }
+                    .credentials-box { background-color: #f8f9fa; border: 2px dashed #007bff; padding: 20px; margin: 20px 0; border-radius: 8px; text-align: center; }
+                    .warning { color: #856404; background-color: #fff3cd; padding: 10px; border-radius: 4px; font-size: 0.9em; margin-top: 15px; border-left: 5px solid #ffc107;}
+                    .btn { display: inline-block; background-color: #28a745; color: white; padding: 12px 25px; text-decoration: none; border-radius: 50px; font-weight: bold; margin-top: 20px; }
+                    .footer { text-align: center; padding: 20px; font-size: 12px; color: #888; background: #eee; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>Benvenuto in MediBook! 🏥</h1>
+                    </div>
+                    <div class="content">
+                        <p>Gentile <strong>%s %s</strong>,</p>
+                        <p>La segreteria ha creato con successo il tuo account personale.</p>
+                        <p>Di seguito trovi le tue credenziali provvisorie per accedere al portale:</p>
+                        
+                        <div class="credentials-box">
+                            <p>📧 <strong>Email (Username):</strong> %s</p>
+                            <p>🔑 <strong>Password Provvisoria:</strong> <span style="font-size: 1.2em; font-weight: bold; color: #d9534f;">%s</span></p>
+                        </div>
+
+                        <div class="warning">
+                            ⚠️ <strong>IMPORTANTE:</strong> Per motivi di sicurezza, al primo accesso ti verrà chiesto di cambiare questa password.
+                        </div>
+
+                        <center>
+                            <a href="http://localhost:8080/accedi" class="btn">Accedi Ora</a>
+                        </center>
+                    </div>
+                    <div class="footer">
+                        MediBook System - Non rispondere a questa email.
+                    </div>
+                </div>
+            </body>
+            </html>
+            """.formatted(nome, cognome, destinatario, passwordTemp);
+
+            helper.setText(htmlContent, true);
+            mailSender.send(message);
+            System.out.println("Email benvenuto inviata a: " + destinatario);
+
+        } catch (MessagingException e) {
+            System.err.println("Errore invio email benvenuto: " + e.getMessage());
+        }
+    }
+
+    // --- Helper Privato per HTML Modifica ---
+    private String costruisciHtmlModifica(String nome, String medico, String data, String ora) {
         return """
         <!DOCTYPE html>
         <html>
