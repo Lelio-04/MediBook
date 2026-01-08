@@ -2,6 +2,7 @@ package it.unisa.medibook.config;
 
 import it.unisa.medibook.model.*;
 import it.unisa.medibook.modelStorage.*;
+import it.unisa.medibook.modelService.PasswordService; // <--- 1. IMPORT NECESSARIO
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -21,12 +22,14 @@ public class DatabaseSeeder implements CommandLineRunner {
     @Autowired
     private PrenotazioneRepository prenotazioneRepository;
 
-    // --- NUOVI REPOSITORY SPECIFICI ---
     @Autowired
     private SegreteriaUtentiRepository segreteriaUtentiRepository;
 
     @Autowired
     private SegreteriaPrenotazioniRepository segreteriaPrenotazioniRepository;
+
+    @Autowired
+    private PasswordService passwordService; // <--- 2. INIEZIONE PASSWORD SERVICE
 
     @Override
     public void run(String... args) throws Exception {
@@ -35,12 +38,13 @@ public class DatabaseSeeder implements CommandLineRunner {
             return;
         }
 
-        System.out.println("--- Inizializzazione Dati di Prova (Seeding) ---");
+        System.out.println("--- Inizializzazione Dati di Prova (Seeding con HASH) ---");
 
         // 1. CREAZIONE MEDICO 1
         Medico medico = new Medico();
         medico.setEmail("rossi@medibook.it");
-        medico.setPassword("password");
+        // HASH PASSWORD
+        medico.setPassword(passwordService.hash("password"));
         medico.setRuolo("MEDICO");
         medico.setNome("Mario");
         medico.setCognome("Rossi");
@@ -52,7 +56,8 @@ public class DatabaseSeeder implements CommandLineRunner {
         // 2. CREAZIONE MEDICO 2
         Medico medico2 = new Medico();
         medico2.setEmail("verdi@medibook.it");
-        medico2.setPassword("password");
+        // HASH PASSWORD
+        medico2.setPassword(passwordService.hash("password"));
         medico2.setRuolo("MEDICO");
         medico2.setNome("Flavio");
         medico2.setCognome("Verdi");
@@ -61,21 +66,23 @@ public class DatabaseSeeder implements CommandLineRunner {
         medico2.setTurni("2:10:00-18:00,5:09:00-12:00");
         medicoRepository.save(medico2);
 
-        // --- 3. CREAZIONE SEGRETERIA UTENTI (Gestione Anagrafiche) ---
+        // --- 3. CREAZIONE SEGRETERIA UTENTI ---
         SegreteriaUtenti segUtenti = new SegreteriaUtenti();
-        segUtenti.setEmail("segreteria.utenti@medibook.it"); // Email specifica
-        segUtenti.setPassword("admin");
-        segUtenti.setRuolo("SEGRETERIA"); // Il ruolo stringa rimane generico, la classe fa la differenza
+        segUtenti.setEmail("segreteria.utenti@medibook.it");
+        // HASH PASSWORD
+        segUtenti.setPassword(passwordService.hash("admin"));
+        segUtenti.setRuolo("SEGRETERIA");
         segUtenti.setNome("Anna");
         segUtenti.setCognome("Bianchi");
 
         segreteriaUtentiRepository.save(segUtenti);
         System.out.println("-> Creata Segreteria Utenti: segreteria.utenti@medibook.it / admin");
 
-        // --- 4. CREAZIONE SEGRETERIA PRENOTAZIONI (Gestione Agenda) ---
+        // --- 4. CREAZIONE SEGRETERIA PRENOTAZIONI ---
         SegreteriaPrenotazioni segPrenotazioni = new SegreteriaPrenotazioni();
-        segPrenotazioni.setEmail("segreteria.prenotazioni@medibook.it"); // Email specifica
-        segPrenotazioni.setPassword("admin");
+        segPrenotazioni.setEmail("segreteria.prenotazioni@medibook.it");
+        // HASH PASSWORD
+        segPrenotazioni.setPassword(passwordService.hash("admin"));
         segPrenotazioni.setRuolo("SEGRETERIA");
         segPrenotazioni.setNome("Carla");
         segPrenotazioni.setCognome("Neri");
@@ -86,7 +93,8 @@ public class DatabaseSeeder implements CommandLineRunner {
         // 5. CREAZIONE PAZIENTE
         Paziente paziente = new Paziente();
         paziente.setEmail("paziente1@gmail.com");
-        paziente.setPassword("password");
+        // HASH PASSWORD
+        paziente.setPassword(passwordService.hash("password"));
         paziente.setRuolo("PAZIENTE");
         paziente.setNome("Luca");
         paziente.setCognome("Verdi");
@@ -105,6 +113,6 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         prenotazioneRepository.save(p1);
 
-        System.out.println("--- Dati inseriti correttamente ---");
+        System.out.println("--- Dati inseriti correttamente (Password Cifrate) ---");
     }
 }

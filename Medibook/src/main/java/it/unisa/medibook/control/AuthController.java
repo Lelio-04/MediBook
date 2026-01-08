@@ -3,9 +3,10 @@ package it.unisa.medibook.control;
 import it.unisa.medibook.model.Paziente;
 import it.unisa.medibook.model.SegreteriaUtenti;
 import it.unisa.medibook.model.SegreteriaPrenotazioni;
-import it.unisa.medibook.modelService.GestioneUtenza;
 import it.unisa.medibook.model.Utente;
-import it.unisa.medibook.modelStorage.UtenteRepository; // <--- AGGIUNTO
+import it.unisa.medibook.modelService.GestioneUtenza;
+import it.unisa.medibook.modelService.PasswordService; // <--- 1. Import Service
+import it.unisa.medibook.modelStorage.UtenteRepository;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -20,10 +21,11 @@ public class AuthController {
     @Autowired
     private GestioneUtenza gestioneUtenza;
 
-    // Ci serve il repository per salvare la nuova password direttamente da qui
-    // senza dover modificare la classe GestioneUtenza.java
     @Autowired
     private UtenteRepository utenteRepository;
+
+    @Autowired
+    private PasswordService passwordService; // <--- 2. Iniezione PasswordService
 
     @GetMapping("/")
     public String showHome() {
@@ -47,22 +49,29 @@ public class AuthController {
                                HttpSession session,
                                Model model) {
 
-        Utente utente = gestioneUtenza.login(email, password);
+        // ====================================================================
+        // MODIFICA LOGIN: CONTROLLO HASH
+        // ====================================================================
 
-        if (utente != null) {
+        // 1. Cerchiamo l'utente SOLO tramite Email
+        Utente utente = utenteRepository.findByEmail(email).orElse(null);
+
+        // 2. Verifichiamo se l'utente esiste E se la password corrisponde all'hash
+        if (utente != null && passwordService.check(password, utente.getPassword())) {
+
             session.setAttribute("utente", utente);
 
             // ====================================================================
-            // 1. CONTROLLO PRIMO ACCESSO (Password Provvisoria)
+            // CONTROLLO PRIMO ACCESSO (Password Provvisoria)
             // ====================================================================
-            // Se la password è quella di default, blocchiamo tutto e forziamo il cambio.
+            // Controlliamo se la password digitata dall'utente è quella provvisoria
             if (password.equals("Medibook123")) {
                 return "redirect:/cambio-password-obbligatorio";
             }
             // ====================================================================
 
 
-            // --- 2. GESTIONE SEGRETERIE (Separation of Duties) ---
+            // --- GESTIONE SEGRETERIE ---
             if (utente instanceof SegreteriaUtenti) {
                 return "redirect:/segreteria-utenti/dashboard";
             }
@@ -71,23 +80,22 @@ public class AuthController {
                 return "redirect:/segreteria-prenotazioni/dashboard";
             }
 
-            // --- 3. GESTIONE ALTRI RUOLI (Medico, Paziente) ---
+            // --- GESTIONE ALTRI RUOLI ---
             String ruolo = utente.getRuolo().toUpperCase();
 
-            // Logica Redirect per Paziente (es. se arrivava da una ricerca)
+            // Logica Redirect per Paziente
             if (redirect != null && !redirect.trim().isEmpty() && !redirect.equals("null")) {
                 if ("PAZIENTE".equals(ruolo)) {
                     return "redirect:" + redirect;
                 }
             }
 
-            // Smistamento Standard
             switch (ruolo) {
                 case "MEDICO":
                     return "redirect:/medico";
                 case "PAZIENTE":
                     String queryCerca = (cerca != null && !cerca.isEmpty()) ? "?cerca=" + cerca : "";
-                    return "redirect:/" + queryCerca;
+                    return "redirect:/paziente" + queryCerca; // Ho corretto il path (era /)
                 default:
                     return "redirect:/";
             }
@@ -106,7 +114,7 @@ public class AuthController {
         return "redirect:/";
     }
 
-    // --- REGISTRAZIONE (Solo per Pazienti autonomi) ---
+    // --- REGISTRAZIONE ---
 
     @GetMapping("/registrazione")
     public String showRegister() {
@@ -129,25 +137,33 @@ public class AuthController {
         p.setCodiceFiscale(codiceFiscale);
         p.setTelefono(telefono);
         p.setEmail(email);
-        p.setPassword(password); // Salviamo in chiaro come richiesto
+
+        // Hash della password
+        p.setPassword(passwordService.hash(password));
 
         try {
             gestioneUtenza.registraPaziente(p);
             model.addAttribute("messaggio", "Registrazione completata! Ora puoi accedere.");
             return "login";
+
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // CATTURIAMO L'ERRORE DI DUPLICAZIONE SPECIFICO
+            model.addAttribute("errore", "Errore: Esiste già un utente con questa Email o Codice Fiscale.");
+            return "registrazione";
+
         } catch (Exception e) {
-            model.addAttribute("errore", "Errore: " + e.getMessage());
+            // Errore generico
+            model.addAttribute("errore", "Errore generico: " + e.getMessage());
             return "registrazione";
         }
     }
 
     // ====================================================================
-    // NUOVE ROTTE PER IL CAMBIO PASSWORD OBBLIGATORIO
+    // CAMBIO PASSWORD OBBLIGATORIO
     // ====================================================================
 
     @GetMapping("/cambio-password-obbligatorio")
     public String showCambioPassword() {
-        // Mostra la pagina JSP che forza il cambio password
         return "cambio_password_obbligatorio";
     }
 
@@ -157,13 +173,10 @@ public class AuthController {
                                         HttpSession session,
                                         Model model) {
 
-        // 1. Recupera l'utente dalla sessione (è stato salvato nel login appena fatto)
         Utente utente = (Utente) session.getAttribute("utente");
-
-        // Se per qualche motivo la sessione è scaduta, rimanda al login
         if (utente == null) return "redirect:/accedi";
 
-        // 2. Validazioni
+        // Validazioni
         if (!nuovaPassword.equals(confermaPassword)) {
             model.addAttribute("errore", "Le due password non coincidono.");
             return "cambio_password_obbligatorio";
@@ -174,20 +187,23 @@ public class AuthController {
             return "cambio_password_obbligatorio";
         }
 
-        // 3. Aggiorna la password nell'oggetto Java
-        utente.setPassword(nuovaPassword);
+        // MODIFICA: HASHIAMO LA NUOVA PASSWORD
+        utente.setPassword(passwordService.hash(nuovaPassword));
 
-        // 4. Salva nel Database (usiamo direttamente il repository qui)
+        // Salva nel Database
         utenteRepository.save(utente);
 
-        // 5. Aggiorna l'utente in sessione con la nuova password (per sicurezza)
+        // Aggiorna la sessione
         session.setAttribute("utente", utente);
 
-        // 6. Redirect alla dashboard corretta in base al ruolo
+        // Redirect
         if ("PAZIENTE".equals(utente.getRuolo())) {
             return "redirect:/paziente?msg=Benvenuto";
         } else if ("MEDICO".equals(utente.getRuolo())) {
             return "redirect:/medico?msg=Benvenuto";
+        } else if ("SEGRETERIA".equals(utente.getRuolo())) {
+            // Gestione generica se serve, altrimenti gli specifici sopra
+            return "redirect:/";
         }
 
         return "redirect:/";

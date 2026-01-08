@@ -9,7 +9,8 @@ import it.unisa.medibook.modelService.EmailService;
 import it.unisa.medibook.modelService.GestioneMedico;
 import it.unisa.medibook.modelService.GestionePrenotazioni;
 import it.unisa.medibook.modelService.GestioneReferti;
-import it.unisa.medibook.modelStorage.PazienteRepository; // <--- 1. Import Repository
+import it.unisa.medibook.modelService.PasswordService; // <--- 1. IMPORT
+import it.unisa.medibook.modelStorage.PazienteRepository;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -40,7 +41,10 @@ public class PazienteController {
     private EmailService emailService;
 
     @Autowired
-    private PazienteRepository pazienteRepository; // <--- 2. Iniezione Repository per salvare modifiche profilo
+    private PazienteRepository pazienteRepository;
+
+    @Autowired
+    private PasswordService passwordService; // <--- 2. INIEZIONE
 
     // --- DASHBOARD ---
     @GetMapping("")
@@ -76,7 +80,7 @@ public class PazienteController {
         return "paziente";
     }
 
-    // --- PRENOTAZIONE VISITA ---
+    // --- PRENOTAZIONE ---
     @PostMapping("/prenota")
     public String prenotaVisita(@RequestParam Integer idMedico,
                                 @RequestParam String data,
@@ -93,7 +97,7 @@ public class PazienteController {
 
             gestionePrenotazioni.nuovaPrenotazione(utente.getId(), idMedico, dataL, oraL);
 
-            // LOGICA INVIO EMAIL
+            // INVIO EMAIL
             try {
                 if (utente instanceof Paziente) {
                     Paziente p = (Paziente) utente;
@@ -125,7 +129,7 @@ public class PazienteController {
         return "redirect:/paziente";
     }
 
-    // --- VISUALIZZA REFERTO ---
+    // --- REFERTO ---
     @GetMapping("/referto")
     public String vediReferto(@RequestParam(name = "idVisita") Integer idVisita, HttpSession session, Model model) {
         Utente utente = (Utente) session.getAttribute("utente");
@@ -140,25 +144,19 @@ public class PazienteController {
         return "paziente_visualizza_referto";
     }
 
-    // ==========================================================
-    //  NOVITÀ: GESTIONE PROFILO
-    // ==========================================================
-
-    // 1. VISUALIZZA PAGINA PROFILO
+    // --- PROFILO (VISUALIZZA) ---
     @GetMapping("/profilo")
     public String vediProfilo(HttpSession session, Model model) {
         Utente utente = (Utente) session.getAttribute("utente");
-
         if (utente == null || !(utente instanceof Paziente)) return "redirect:/";
 
-        // Ricarichiamo i dati freschi dal DB
         Paziente p = pazienteRepository.findById(utente.getId()).orElse(null);
         model.addAttribute("paziente", p);
 
-        return "paziente_profilo"; // Assicurati di aver creato questa JSP
+        return "paziente_profilo";
     }
 
-    // 2. SALVA MODIFICHE PROFILO E PASSWORD
+    // --- PROFILO (SALVA MODIFICHE) ---
     @PostMapping("/profilo/salva")
     public String salvaProfilo(@RequestParam String telefono,
                                @RequestParam String indirizzo,
@@ -172,22 +170,24 @@ public class PazienteController {
         try {
             Paziente p = pazienteRepository.findById(utente.getId()).orElseThrow();
 
-            // Aggiorna dati modificabili
+            // Aggiorna dati anagrafici
             p.setTelefono(telefono);
             p.setIndirizzo(indirizzo);
 
-            // Cambio Password (Se il campo non è vuoto)
+            // 3. CAMBIO PASSWORD SICURO
             if (nuovaPassword != null && !nuovaPassword.trim().isEmpty()) {
-                p.setPassword(nuovaPassword);
+
+                // HASHIAMO LA NUOVA PASSWORD!
+                p.setPassword(passwordService.hash(nuovaPassword));
+
                 redirectAttributes.addFlashAttribute("successo", "Profilo e Password aggiornati con successo!");
             } else {
                 redirectAttributes.addFlashAttribute("successo", "Dati di contatto aggiornati.");
             }
 
-            // Salva nel DB
             pazienteRepository.save(p);
 
-            // Aggiorna la sessione per vedere subito le modifiche nell'header
+            // Aggiorna la sessione (Nota: la password in sessione sarà quella hashata, ma va bene)
             session.setAttribute("utente", p);
 
         } catch (Exception e) {
@@ -197,10 +197,7 @@ public class PazienteController {
         return "redirect:/paziente/profilo";
     }
 
-    // ==========================================================
-    //  API REST PER AJAX
-    // ==========================================================
-
+    // --- API AJAX ---
     @GetMapping("/api/giorni-lavoro")
     @ResponseBody
     public List<Integer> getGiorniLavoro(@RequestParam Integer medicoId) {

@@ -4,7 +4,8 @@ import it.unisa.medibook.model.Paziente;
 import it.unisa.medibook.model.Prenotazione;
 import it.unisa.medibook.model.SegreteriaUtenti;
 import it.unisa.medibook.model.Utente;
-import it.unisa.medibook.modelService.EmailService; // <--- 1. Import Service Email
+import it.unisa.medibook.modelService.EmailService;
+import it.unisa.medibook.modelService.PasswordService; // <--- 1. IMPORT
 import it.unisa.medibook.modelStorage.PazienteRepository;
 import it.unisa.medibook.modelStorage.PrenotazioneRepository;
 import jakarta.servlet.http.HttpSession;
@@ -27,7 +28,10 @@ public class SegreteriaUtentiController {
     private PrenotazioneRepository prenotazioneRepository;
 
     @Autowired
-    private EmailService emailService; // <--- 2. Iniezione EmailService
+    private EmailService emailService;
+
+    @Autowired
+    private PasswordService passwordService; // <--- 2. INIEZIONE PASSWORD SERVICE
 
     // --- METODO DI SICUREZZA ---
     private boolean isAutorizzato(HttpSession session) {
@@ -43,7 +47,7 @@ public class SegreteriaUtentiController {
         if (!isAutorizzato(session)) return "redirect:/accedi";
 
         model.addAttribute("listaPazienti", pazienteRepository.findAll());
-        return "segreteria_utenti"; // view/segreteria_utenti.jsp
+        return "segreteria_utenti";
     }
 
     // ============================================================
@@ -67,32 +71,29 @@ public class SegreteriaUtentiController {
     }
 
     // ============================================================
-    // 3. NUOVO
+    // 3. NUOVO FORM
     // ============================================================
     @GetMapping("/nuovo")
     public String nuovoPaziente(HttpSession session, Model model) {
         if (!isAutorizzato(session)) return "redirect:/accedi";
-
         model.addAttribute("paziente", new Paziente());
-        return "form_paziente"; // view/form_paziente.jsp
+        return "form_paziente";
     }
 
     // ============================================================
-    // 4. MODIFICA
+    // 4. MODIFICA FORM
     // ============================================================
     @GetMapping("/modifica")
     public String modificaPaziente(@RequestParam Integer id, HttpSession session, Model model) {
         if (!isAutorizzato(session)) return "redirect:/accedi";
-
         Paziente p = pazienteRepository.findById(id).orElse(null);
         if (p == null) return "redirect:/segreteria-utenti/dashboard";
-
         model.addAttribute("paziente", p);
         return "form_paziente";
     }
 
     // ============================================================
-    // 5. SALVATAGGIO (CON INVIO EMAIL)
+    // 5. SALVATAGGIO (CON HASH PASSWORD)
     // ============================================================
     @PostMapping("/salva")
     public String salvaPaziente(@ModelAttribute Paziente p,
@@ -105,24 +106,24 @@ public class SegreteriaUtentiController {
         if (p.getId() == null) {
             String passwordProvvisoria = "Medibook123";
 
-            p.setPassword(passwordProvvisoria);
+            // 3. CRIPTIAMO LA PASSWORD PRIMA DI SALVARE
+            p.setPassword(passwordService.hash(passwordProvvisoria));
+
             p.setRuolo("PAZIENTE");
 
-            // Salvataggio nel DB
             pazienteRepository.save(p);
 
-            // --- 3. INVIO EMAIL BENVENUTO ---
+            // 4. INVIAMO L'EMAIL (Qui mandiamo la password IN CHIARO affinché l'utente la legga)
             try {
                 if (p.getEmail() != null && !p.getEmail().isEmpty()) {
                     emailService.inviaEmailBenvenuto(
                             p.getEmail(),
                             p.getNome(),
                             p.getCognome(),
-                            passwordProvvisoria
+                            passwordProvvisoria // Passiamo quella leggibile
                     );
                 }
             } catch (Exception e) {
-                // Non blocchiamo la creazione se l'email fallisce, ma lo notifichiamo
                 System.err.println("Errore invio email benvenuto: " + e.getMessage());
             }
 
@@ -139,8 +140,8 @@ public class SegreteriaUtentiController {
                 esistente.setTelefono(p.getTelefono());
                 esistente.setIndirizzo(p.getIndirizzo());
 
-                // Manteniamo la regola: l'email non si cambia in modifica per sicurezza
-                // esistente.setEmail(p.getEmail()); RIMOSSO
+                // Nota: In modifica NON tocchiamo la password
+                // La password rimane quella vecchia (già hashata)
 
                 pazienteRepository.save(esistente);
             }
