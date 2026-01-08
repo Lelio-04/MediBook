@@ -1,16 +1,15 @@
 package it.unisa.medibook.control;
 
-import it.unisa.medibook.model.Medico;
-import it.unisa.medibook.model.Paziente;
-import it.unisa.medibook.model.Prenotazione;
-import it.unisa.medibook.model.Referto;
-import it.unisa.medibook.model.Utente;
+import it.unisa.medibook.model.*;
 import it.unisa.medibook.modelService.EmailService;
 import it.unisa.medibook.modelService.GestioneMedico;
 import it.unisa.medibook.modelService.GestionePrenotazioni;
 import it.unisa.medibook.modelService.GestioneReferti;
 import it.unisa.medibook.modelService.PasswordService; // <--- 1. IMPORT
+import it.unisa.medibook.modelStorage.MedicoRepository;
 import it.unisa.medibook.modelStorage.PazienteRepository;
+import it.unisa.medibook.modelStorage.PrenotazioneRepository;
+import it.unisa.medibook.modelStorage.RecensioneRepository;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -45,6 +44,12 @@ public class PazienteController {
 
     @Autowired
     private PasswordService passwordService; // <--- 2. INIEZIONE
+
+    @Autowired
+    private RecensioneRepository recensioneRepository; // Aggiungi l'autowired
+
+    @Autowired
+    private PrenotazioneRepository prenotazioneRepository; // Assicurati di averlo
 
     // --- DASHBOARD ---
     @GetMapping("")
@@ -209,5 +214,30 @@ public class PazienteController {
     public List<LocalTime> getOrari(@RequestParam Integer medicoId, @RequestParam String data) {
         LocalDate dataScelta = LocalDate.parse(data);
         return gestionePrenotazioni.getOrariLiberi(medicoId, dataScelta);
+    }
+
+
+    @PostMapping("/recensione/salva")
+    public String salvaRecensione(@RequestParam Long idPrenotazione, // Cambiato nome parametro
+                                  @RequestParam int voto,
+                                  @RequestParam String commento,
+                                  HttpSession session) {
+
+        Utente u = (Utente) session.getAttribute("utente");
+        if (!(u instanceof Paziente)) return "redirect:/accedi";
+
+        // Cerchiamo la PRENOTAZIONE
+        Prenotazione p = prenotazioneRepository.findById(Math.toIntExact(idPrenotazione)).orElse(null);
+
+        // Controllo: esiste la prenotazione E non ha ancora una recensione?
+        if (p != null && p.getRecensione() == null) {
+
+            Recensione r = new Recensione(voto, commento, p.getMedico(), (Paziente) u);
+            r.setPrenotazione(p); // Colleghiamo la prenotazione
+
+            recensioneRepository.save(r);
+        }
+
+        return "redirect:/paziente?successo=RecensioneInviata";
     }
 }

@@ -226,6 +226,35 @@
         </div>
     </div>
 </div>
+<div class="container" style="max-width: 1000px; margin: 30px auto; padding: 0 20px;">
+
+    <div class="info-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h3 style="margin:0; color: #007bff;">⭐ Recensioni Pazienti</h3>
+            <span style="font-size: 1.2em; font-weight: bold; background: #ffc107; padding: 5px 15px; border-radius: 20px;">
+                Media: ${mediaVoti} / 5
+            </span>
+        </div>
+
+        <c:if test="${empty recensioni}">
+            <p style="color:#777; font-style:italic;">Nessuna recensione ancora presente.</p>
+        </c:if>
+
+        <c:forEach var="rec" items="${recensioni}">
+            <div style="border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px;">
+                <div style="display:flex; justify-content:space-between;">
+                    <strong>${rec.paziente.nome} ${rec.paziente.cognome.charAt(0)}.</strong>
+                    <span style="color:#ffc107;">
+                        <c:forEach begin="1" end="${rec.voto}">⭐</c:forEach>
+                    </span>
+                </div>
+                <p style="margin: 5px 0; color: #555;">${rec.commento}</p>
+                <small style="color: #999;">${rec.dataInserimento}</small>
+            </div>
+        </c:forEach>
+    </div>
+
+</div>
 
 <div style="margin-top: auto; background: #f8f9fa; padding: 20px; text-align: center; color: #777; border-top: 1px solid #eee;">
     <p>&copy; 2026 MediBook System. Tutti i diritti riservati.</p>

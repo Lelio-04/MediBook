@@ -1,7 +1,9 @@
 package it.unisa.medibook.control;
 
 import it.unisa.medibook.model.Medico;
+import it.unisa.medibook.model.Recensione;
 import it.unisa.medibook.modelStorage.MedicoRepository;
+import it.unisa.medibook.modelStorage.RecensioneRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -39,20 +41,26 @@ public class RicercaController {
         return "risultatiRicerca";
     }
 
+    @Autowired
+    private RecensioneRepository recensioneRepository; // Aggiungi questo
+
     @GetMapping("/medico/{id}")
     public String dettagliMedico(@PathVariable Long id, Model model) {
-
-        // Recupera il medico dal DB.
-        // NON cerca indirizzo o telefono, prende solo l'oggetto Medico come è definito nel tuo codice.
         Medico medico = medicoRepository.findById(id).orElse(null);
+        if (medico == null) return "redirect:/";
 
-        if (medico == null) {
-            return "redirect:/";
-        }
-
+        // Recupera le recensioni
+        List<Recensione> recensioni = recensioneRepository.findByMedicoId(id);
         model.addAttribute("medico", medico);
+        model.addAttribute("recensioni", recensioni);
 
-        // Chiama la JSP che abbiamo appena corretto
+        // Calcolo media voti (opzionale ma carino)
+        double media = 0.0;
+        if (!recensioni.isEmpty()) {
+            media = recensioni.stream().mapToInt(Recensione::getVoto).average().orElse(0.0);
+        }
+        model.addAttribute("mediaVoti", String.format("%.1f", media));
+
         return "dettagli_medico";
     }
 

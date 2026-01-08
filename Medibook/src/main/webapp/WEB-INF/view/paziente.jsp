@@ -38,8 +38,14 @@
 
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
-        .btn-tabella { text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 13px; font-weight: bold; transition: background 0.2s; display: inline-block;}
+        .btn-tabella { text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 13px; font-weight: bold; transition: background 0.2s; display: inline-block; cursor: pointer;}
         .btn-leggi { background-color: #17a2b8; color: white; }
+
+        .btn-vota { background-color: #ffc107; color: #333; border: none; margin-left: 5px; }
+        .btn-vota:hover { background-color: #e0a800; }
+
+        /* NUOVO STILE: Bottone Disabilitato (Votato) */
+        .btn-disabled { background-color: #e9ecef; color: #6c757d; border: 1px solid #ced4da; cursor: default; margin-left: 5px; pointer-events: none; }
 
         .card { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); padding: 25px; border: 1px solid #eee; margin-bottom: 20px; }
         .card h3 { margin-top: 0; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; margin-bottom: 20px; color: #333; }
@@ -76,7 +82,14 @@
 
     <c:if test="${not empty param.successo}">
         <div class="alert alert-success" style="background-color: #d4edda; color: #155724; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #c3e6cb;">
-            ✅ Operazione completata con successo!
+            <c:choose>
+                <c:when test="${param.successo == 'RecensioneInviata'}">
+                    ⭐ Grazie! La tua recensione è stata salvata correttamente.
+                </c:when>
+                <c:otherwise>
+                    ✅ Operazione completata con successo!
+                </c:otherwise>
+            </c:choose>
         </div>
     </c:if>
 
@@ -97,7 +110,6 @@
                     <label style="display:block; margin-bottom:5px; font-weight:500;">Cerca il Medico (per Nome o Specializzazione):</label>
                     <div class="autocomplete-container">
 
-                        <%-- 1. RECUPERO VALORI PRECEDENTI O DALLA RICERCA --%>
                         <c:set var="valoreNome" value="${not empty param.prevNomeMedico ? param.prevNomeMedico : param.nomeMedico}" />
                         <c:set var="valoreId" value="${not empty param.prevIdMedico ? param.prevIdMedico : param.idMedico}" />
 
@@ -202,9 +214,27 @@
                                         </td>
                                         <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">
                                             <c:if test="${v.stato == 'CONCLUSA'}">
-                                                <a href="${pageContext.request.contextPath}/paziente/referto?idVisita=${v.id}" class="btn-tabella btn-leggi">
-                                                    📄 Vedi Referto
-                                                </a>
+                                                <div style="display:flex; justify-content: flex-end; gap: 5px;">
+
+                                                    <a href="${pageContext.request.contextPath}/paziente/referto?idVisita=${v.id}" class="btn-tabella btn-leggi">
+                                                        📄 Referto
+                                                    </a>
+
+                                                    <c:choose>
+                                                        <c:when test="${not empty v.recensione}">
+                                                            <button type="button" class="btn-tabella btn-disabled" title="Hai già valutato questa prenotazione">
+                                                                ⭐ Votato
+                                                            </button>
+                                                        </c:when>
+                                                        <c:otherwise>
+                                                            <button type="button" class="btn-tabella btn-vota"
+                                                                    onclick="apriModalRecensione('${v.id}', '${v.medico.cognome}')">
+                                                                ⭐ Vota
+                                                            </button>
+                                                        </c:otherwise>
+                                                    </c:choose>
+
+                                                </div>
                                             </c:if>
                                             <c:if test="${v.stato != 'CONCLUSA'}">
                                                 <span style="color: #ccc;">-</span>
@@ -230,6 +260,39 @@
     </div>
 </div>
 
+<div id="modalRecensione" class="modal-overlay">
+    <div class="modal-box" style="text-align: left;">
+        <h3 style="margin-top:0; color:#007bff; text-align: center;">Valuta Dr. <span id="recensioneNomeMedico"></span></h3>
+
+        <form action="${pageContext.request.contextPath}/paziente/recensione/salva" method="post"
+              onsubmit="this.querySelector('button[type=submit]').disabled=true; this.querySelector('button[type=submit]').innerText='Invio...';">
+
+            <input type="hidden" name="idPrenotazione" id="recensioneIdPrenotazione">
+
+            <div style="margin-bottom: 15px;">
+                <label style="font-weight: bold; display: block; margin-bottom: 5px;">Il tuo Voto:</label>
+                <select name="voto" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 16px;">
+                    <option value="5">⭐⭐⭐⭐⭐ (Eccellente)</option>
+                    <option value="4">⭐⭐⭐⭐ (Molto Buono)</option>
+                    <option value="3">⭐⭐⭐ (Buono)</option>
+                    <option value="2">⭐⭐ (Sufficiente)</option>
+                    <option value="1">⭐ (Scarso)</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="font-weight: bold; display: block; margin-bottom: 5px;">Commento:</label>
+                <textarea name="commento" placeholder="Scrivi qui la tua esperienza..." style="width: 100%; height: 100px; padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-family: sans-serif; resize: vertical;" required></textarea>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" class="modal-btn" style="flex:1;">Invia Recensione</button>
+                <button type="button" class="modal-btn" onclick="document.getElementById('modalRecensione').classList.remove('active')" style="flex:1; background-color: #6c757d;">Annulla</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
     // --- ELEMENTI ---
     const searchInput = document.getElementById('medicoSearch');
@@ -247,6 +310,13 @@
         popup.classList.add('active');
     }
     function chiudiPopup() { popup.classList.remove('active'); }
+
+    // --- FUNZIONI RECENSIONE (AGGIORNATA) ---
+    function apriModalRecensione(idPrenotazione, cognomeMedico) {
+        document.getElementById('recensioneIdPrenotazione').value = idPrenotazione; // Imposta ID PRENOTAZIONE
+        document.getElementById('recensioneNomeMedico').innerText = cognomeMedico;
+        document.getElementById('modalRecensione').classList.add('active');
+    }
 
     // --- FLATPICKR (CALENDARIO) ---
     let calendarInstance = flatpickr("#dataInput", {
@@ -282,7 +352,6 @@
         if(query.length === 0) { suggestionsDiv.style.display = 'none'; return; }
 
         // --- FILTRAGGIO AVANZATO ---
-        // Controlla se il termine di ricerca è presente in Nome, Cognome o Specializzazione
         const matches = mediciDemo.filter(m => {
             const fullString = (m.nome + " " + m.cognome + " " + m.spec).toLowerCase();
             return fullString.includes(query);
@@ -293,7 +362,6 @@
             matches.forEach(medico => {
                 const div = document.createElement('div');
                 div.className = 'suggestion-item';
-                // Evidenzia la specializzazione
                 div.innerHTML = '<strong>Dr. ' + medico.nome + ' ' + medico.cognome + '</strong><br><small style="color:#007bff; font-weight:bold;">' + medico.spec + '</small>';
 
                 div.addEventListener('click', function() {
@@ -323,11 +391,10 @@
                 dateInput.disabled = false;
                 dateInput.placeholder = "Seleziona una data";
 
-                // Configura Flatpickr per abilitare solo i giorni giusti
                 calendarInstance.set('disable', [
                     function(date) {
-                        let jsDay = date.getDay(); // 0=Dom, 1=Lun...
-                        let javaDay = (jsDay === 0) ? 7 : jsDay; // Converti per il Backend (1=Lun... 7=Dom)
+                        let jsDay = date.getDay();
+                        let javaDay = (jsDay === 0) ? 7 : jsDay;
                         return !giorniLavorativi.includes(javaDay);
                     }
                 ]);
@@ -376,9 +443,7 @@
         filterInput.addEventListener('keyup', function() {
             const term = this.value.toLowerCase();
             historyRows.forEach(row => {
-                // Legge i dati nascosti nella riga (medico, spec, data)
                 const searchText = row.getAttribute('data-search').toLowerCase();
-
                 if (searchText.includes(term)) {
                     row.style.display = '';
                 } else {
@@ -388,7 +453,7 @@
         });
     }
 
-    // --- AUTO-ATTIVAZIONE (Se ricarico pagina con errore) ---
+    // --- AUTO-ATTIVAZIONE ---
     window.addEventListener('DOMContentLoaded', (event) => {
         const idPrecaricato = hiddenIdInput.value;
         if(idPrecaricato && idPrecaricato.trim() !== "") {

@@ -36,6 +36,18 @@ public class Prenotazione {
     @OneToOne(mappedBy = "prenotazione", cascade = CascadeType.ALL)
     private Referto referto;
 
+    @OneToOne(mappedBy = "prenotazione", cascade = CascadeType.ALL)
+    private Recensione recensione;
+
+    // Getter e Setter
+    public Recensione getRecensione() {
+        return recensione;
+    }
+
+    public void setRecensione(Recensione recensione) {
+        this.recensione = recensione;
+    }
+
     // --- Costruttori ---
 
     public Prenotazione() {
