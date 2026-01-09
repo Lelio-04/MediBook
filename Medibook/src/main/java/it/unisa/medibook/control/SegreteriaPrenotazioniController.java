@@ -166,20 +166,19 @@ public class SegreteriaPrenotazioniController {
         return "redirect:/segreteria-prenotazioni/dashboard";
     }
 
-    // --- HELPER METHOD PER EMAIL (Privato) ---
     private void inviaEmailModifica(Prenotazione p) {
+
+        String dataFormat = p.getData().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        String oraFormat = p.getOra().toString();
+        String nomePaziente = p.getPaziente().getNome() + " " + p.getPaziente().getCognome();
+        String nomeMedico = p.getMedico().getCognome();
+
+        // 1. INVIO AL PAZIENTE
         try {
             String emailPaziente = p.getPaziente().getEmail();
-
             if (emailPaziente != null && !emailPaziente.isEmpty()) {
-
                 String oggetto = "⚠️ Modifica Appuntamento - MediBook";
-                String nomePaziente = p.getPaziente().getNome() + " " + p.getPaziente().getCognome();
-                String nomeMedico = p.getMedico().getCognome();
-                String dataFormat = p.getData().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-                String oraFormat = p.getOra().toString();
 
-                // Chiama il servizio che genera l'HTML
                 emailService.inviaEmailModifica(
                         emailPaziente,
                         oggetto,
@@ -190,8 +189,24 @@ public class SegreteriaPrenotazioniController {
                 );
             }
         } catch (Exception e) {
-            // Logghiamo l'errore ma non blocchiamo l'applicazione
-            System.err.println("Errore durante l'invio dell'email: " + e.getMessage());
+            System.err.println("Errore invio email paziente: " + e.getMessage());
+        }
+
+        // 2. INVIO AL MEDICO (NUOVO)
+        try {
+            String emailMedico = p.getMedico().getEmail();
+            // Controlliamo che il medico abbia una mail
+            if (emailMedico != null && !emailMedico.isEmpty()) {
+
+                emailService.inviaEmailModificaMedico(
+                        emailMedico,
+                        nomePaziente,
+                        dataFormat,
+                        oraFormat
+                );
+            }
+        } catch (Exception e) {
+            System.err.println("Errore invio email medico: " + e.getMessage());
         }
     }
 }

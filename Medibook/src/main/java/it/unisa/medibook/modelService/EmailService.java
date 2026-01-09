@@ -201,4 +201,55 @@ public class EmailService {
         </html>
         """.formatted(nome, medico, data, ora);
     }
+
+    public void inviaEmailModificaMedico(String destinatarioMedico, String nomePaziente,
+                                         String nuovaData, String nuovaOra) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom("tuaemail@gmail.com");
+            helper.setTo(destinatarioMedico);
+            helper.setSubject("📅 Aggiornamento Agenda - MediBook");
+
+            String htmlContent = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: sans-serif; background-color: #f8f9fa; padding: 20px; }
+                    .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; border-top: 5px solid #17a2b8; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .content { padding: 30px; color: #333; }
+                    .box-info { background-color: #e3f2fd; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #007bff; }
+                    .footer { text-align: center; padding: 15px; font-size: 12px; color: #777; background: #eee; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="content">
+                        <h3>Gentile Dottore,</h3>
+                        <p>La segreteria ha modificato un appuntamento nella tua agenda.</p>
+                        
+                        <div class="box-info">
+                            <p>👤 <strong>Paziente:</strong> %s</p>
+                            <p>📅 <strong>Nuova Data:</strong> %s</p>
+                            <p>🕒 <strong>Nuovo Orario:</strong> %s</p>
+                        </div>
+                        
+                        <p>Puoi consultare i dettagli aggiornati nella tua area riservata.</p>
+                    </div>
+                    <div class="footer">MediBook System - Notifica Automatica</div>
+                </div>
+            </body>
+            </html>
+            """.formatted(nomePaziente, nuovaData, nuovaOra);
+
+            helper.setText(htmlContent, true);
+            mailSender.send(message);
+            System.out.println("Email inviata al medico: " + destinatarioMedico);
+
+        } catch (MessagingException e) {
+            System.err.println("Errore email medico: " + e.getMessage());
+        }
+    }
 }

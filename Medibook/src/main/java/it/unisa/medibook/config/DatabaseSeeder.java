@@ -66,6 +66,19 @@ public class DatabaseSeeder implements CommandLineRunner {
         medico2.setTurni("2:10:00-18:00,5:09:00-12:00");
         medicoRepository.save(medico2);
 
+        //3 . Creazione medico 3
+        Medico medico3 = new Medico();
+        medico3.setEmail("crisci.lelio04@gmail.com");
+        // HASH PASSWORD
+        medico3.setPassword(passwordService.hash("password3"));
+        medico3.setRuolo("MEDICO");
+        medico3.setNome("Lelio");
+        medico3.setCognome("Crisci");
+        medico3.setSpecializzazione("Dermatologia");
+        medico3.setNumeroAlbo("12345");
+        medico3.setTurni("1:09:00-13:00,3:15:00-19:00,4:15:00-19:00");
+        medicoRepository.save(medico3);
+
         // --- 3. CREAZIONE SEGRETERIA UTENTI ---
         SegreteriaUtenti segUtenti = new SegreteriaUtenti();
         segUtenti.setEmail("segreteria.utenti@medibook.it");
