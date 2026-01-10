@@ -23,17 +23,6 @@ public class GestioneUtenza {
     @Autowired
     private MedicoRepository medicoRepository;
 
-    /**
-     * Effettua il login verificando email e password.
-     */
-    public Utente login(String email, String password) {
-        Optional<Utente> utente = utenteRepository.findByEmail(email);
-
-        if (utente.isPresent() && utente.get().getPassword().equals(password)) {
-            return utente.get();
-        }
-        return null;
-    }
 
     /**
      * AGGIUNTA 2: Metodo per registrare un nuovo paziente.
@@ -54,10 +43,4 @@ public class GestioneUtenza {
     }
     // Assicurati di avere @Autowired private MedicoRepository medicoRepository;
 
-    public List<Medico> elencaMedici() {
-        return medicoRepository.findAll();
-    }
-    public void aggiornaPassword(Utente u) {
-        utenteRepository.save(u);
-    }
 }
