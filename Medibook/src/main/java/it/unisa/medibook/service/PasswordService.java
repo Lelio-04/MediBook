@@ -1,4 +1,4 @@
-package it.unisa.medibook.modelService;
+package it.unisa.medibook.service;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;

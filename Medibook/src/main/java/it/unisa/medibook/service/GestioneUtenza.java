@@ -1,4 +1,4 @@
-package it.unisa.medibook.modelService;
+package it.unisa.medibook.service;
 
 import it.unisa.medibook.model.Paziente; // <--- Importante: Importa la classe Paziente
 import it.unisa.medibook.model.*;

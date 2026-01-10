@@ -4,8 +4,8 @@ import it.unisa.medibook.model.Paziente;
 import it.unisa.medibook.model.SegreteriaUtenti;
 import it.unisa.medibook.model.SegreteriaPrenotazioni;
 import it.unisa.medibook.model.Utente;
-import it.unisa.medibook.modelService.GestioneUtenza;
-import it.unisa.medibook.modelService.PasswordService; // <--- 1. Import Service
+import it.unisa.medibook.service.GestioneUtenza;
+import it.unisa.medibook.service.PasswordService; // <--- 1. Import Service
 import it.unisa.medibook.modelStorage.UtenteRepository;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,12 +1,11 @@
 package it.unisa.medibook.control;
 
 import it.unisa.medibook.model.*;
-import it.unisa.medibook.modelService.EmailService;
-import it.unisa.medibook.modelService.GestioneMedico;
-import it.unisa.medibook.modelService.GestionePrenotazioni;
-import it.unisa.medibook.modelService.GestioneReferti;
-import it.unisa.medibook.modelService.PasswordService; // <--- 1. IMPORT
-import it.unisa.medibook.modelStorage.MedicoRepository;
+import it.unisa.medibook.service.EmailService;
+import it.unisa.medibook.service.GestioneMedico;
+import it.unisa.medibook.service.GestionePrenotazioni;
+import it.unisa.medibook.service.GestioneReferti;
+import it.unisa.medibook.service.PasswordService; // <--- 1. IMPORT
 import it.unisa.medibook.modelStorage.PazienteRepository;
 import it.unisa.medibook.modelStorage.PrenotazioneRepository;
 import it.unisa.medibook.modelStorage.RecensioneRepository;

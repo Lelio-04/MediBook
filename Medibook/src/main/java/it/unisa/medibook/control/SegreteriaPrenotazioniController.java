@@ -4,9 +4,9 @@ import it.unisa.medibook.model.Prenotazione;
 import it.unisa.medibook.model.Referto;
 import it.unisa.medibook.model.SegreteriaPrenotazioni;
 import it.unisa.medibook.model.Utente;
-import it.unisa.medibook.modelService.EmailService; // <--- 1. Import EmailService
-import it.unisa.medibook.modelService.GestionePrenotazioni;
-import it.unisa.medibook.modelService.GestioneReferti;
+import it.unisa.medibook.service.EmailService; // <--- 1. Import EmailService
+import it.unisa.medibook.service.GestionePrenotazioni;
+import it.unisa.medibook.service.GestioneReferti;
 import it.unisa.medibook.modelStorage.PrenotazioneRepository;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;

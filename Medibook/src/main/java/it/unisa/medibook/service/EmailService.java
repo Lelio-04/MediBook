@@ -1,4 +1,4 @@
-package it.unisa.medibook.modelService;
+package it.unisa.medibook.service;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;

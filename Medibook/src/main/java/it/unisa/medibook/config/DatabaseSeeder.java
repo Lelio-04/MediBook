@@ -2,7 +2,7 @@ package it.unisa.medibook.config;
 
 import it.unisa.medibook.model.*;
 import it.unisa.medibook.modelStorage.*;
-import it.unisa.medibook.modelService.PasswordService; // <--- 1. IMPORT NECESSARIO
+import it.unisa.medibook.service.PasswordService; // <--- 1. IMPORT NECESSARIO
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;

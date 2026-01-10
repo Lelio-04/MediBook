@@ -4,8 +4,8 @@ import it.unisa.medibook.model.Paziente;
 import it.unisa.medibook.model.Prenotazione;
 import it.unisa.medibook.model.SegreteriaUtenti;
 import it.unisa.medibook.model.Utente;
-import it.unisa.medibook.modelService.EmailService;
-import it.unisa.medibook.modelService.PasswordService; // <--- 1. IMPORT
+import it.unisa.medibook.service.EmailService;
+import it.unisa.medibook.service.PasswordService; // <--- 1. IMPORT
 import it.unisa.medibook.modelStorage.PazienteRepository;
 import it.unisa.medibook.modelStorage.PrenotazioneRepository;
 import jakarta.servlet.http.HttpSession;
