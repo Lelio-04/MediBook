@@ -50,7 +50,7 @@ public class RicercaController {
         if (medico == null) return "redirect:/";
 
         // Recupera le recensioni
-        List<Recensione> recensioni = recensioneRepository.findByMedicoId(id);
+        List<Recensione> recensioni = recensioneRepository.findByMedicoId(Math.toIntExact(id));
         model.addAttribute("medico", medico);
         model.addAttribute("recensioni", recensioni);
 

@@ -7,5 +7,5 @@ import java.util.List;
 
 public interface RecensioneRepository extends JpaRepository<Recensione, Long> {
     // Trova tutte le recensioni di un medico
-    List<Recensione> findByMedicoId(Long medicoId);
+    List<Recensione> findByMedicoId(Integer medico_id);
 }

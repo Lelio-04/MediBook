@@ -8,5 +8,4 @@ public interface PazienteRepository extends JpaRepository<Paziente, Integer> {
 
     // Questo metodo serve per controllare se un CF esiste già durante la registrazione
     // Spring genera automaticamente la query: SELECT * FROM paziente WHERE codice_fiscale = ?
-    Optional<Paziente> findByCodiceFiscale(String codiceFiscale);
 }
