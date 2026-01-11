@@ -83,32 +83,39 @@ public class SegreteriaPrenotazioniController {
         Utente utente = (Utente) session.getAttribute("utente");
         if (utente == null || !"SEGRETERIA".equals(utente.getRuolo())) return "redirect:/";
 
+        // ============================================================
+        // NUOVO CONTROLLO: DATA NEL PASSATO
+        // ============================================================
+        if (nuovaData.isBefore(LocalDate.now())) {
+            redirectAttributes.addFlashAttribute("errore", "Errore: Non è possibile impostare una data nel passato.");
+            return "redirect:/segreteria-prenotazioni/dashboard";
+        }
+        // ============================================================
+
         try {
             // CASO 1: CONCLUSA -> Va al Referto
             if ("CONCLUSA".equals(nuovoStato)) {
+                // Notare che passiamo comunque per il service che ha i controlli OCL
                 gestionePrenotazioni.modificaPrenotazione(id, nuovaData, nuovaOra, "EFFETTUATA");
                 return "redirect:/segreteria-prenotazioni/referto/nuovo?id=" + id;
             }
 
-            // CASO 2: MODIFICA NORMALE -> Aggiorna e Invia Email
+            // CASO 2: MODIFICA NORMALE
             else {
-                // 1. Eseguiamo la modifica
                 gestionePrenotazioni.modificaPrenotazione(id, nuovaData, nuovaOra, nuovoStato);
-                redirectAttributes.addFlashAttribute("successo", "Prenotazione aggiornata (" + nuovoStato + ")!");
+                redirectAttributes.addFlashAttribute("successo", "Prenotazione aggiornata correttamente!");
 
-                // 2. Recuperiamo la prenotazione aggiornata per mandare l'email
-                // (Evitiamo di mandare email se è stata cancellata, se preferisci)
                 if (!"CANCELLATA".equals(nuovoStato)) {
                     Prenotazione p = prenotazioneRepository.findById(id).orElse(null);
                     if (p != null) {
-                        inviaEmailModifica(p); // <--- 3. Chiamata al metodo helper
+                        inviaEmailModifica(p);
                     }
                 }
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
-            redirectAttributes.addFlashAttribute("errore", e.getMessage());
+            // Qui catturiamo eventuali eccezioni lanciate dal Service (es. violazione vincoli OCL)
+            redirectAttributes.addFlashAttribute("errore", "Impossibile aggiornare: " + e.getMessage());
         }
 
         return "redirect:/segreteria-prenotazioni/dashboard";

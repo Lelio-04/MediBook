@@ -176,36 +176,37 @@ public class AuthController {
         Utente utente = (Utente) session.getAttribute("utente");
         if (utente == null) return "redirect:/accedi";
 
-        // Validazioni
+        // 1. Verifica coincidenza delle password
         if (!nuovaPassword.equals(confermaPassword)) {
             model.addAttribute("errore", "Le due password non coincidono.");
             return "cambio_password_obbligatorio";
         }
 
+        // 2. CONTROLLO CRITICO: La nuova password non deve essere quella di default
+        // Questo impedisce il loop del redirect obbligatorio
         if (nuovaPassword.equals("Medibook123")) {
-            model.addAttribute("errore", "Devi scegliere una password diversa da quella provvisoria!");
+            model.addAttribute("errore", "Per motivi di sicurezza, la nuova password deve essere diversa da 'Medibook123'.");
             return "cambio_password_obbligatorio";
         }
 
-        // MODIFICA: HASHIAMO LA NUOVA PASSWORD
+        // 3. Modifica e Hashing
         utente.setPassword(passwordService.hash(nuovaPassword));
 
-        // Salva nel Database
+        // 4. Salva nel Database
         utenteRepository.save(utente);
 
-        // Aggiorna la sessione
+        // 5. Aggiorna la sessione con l'oggetto utente aggiornato
         session.setAttribute("utente", utente);
 
-        // Redirect
-        if ("PAZIENTE".equals(utente.getRuolo())) {
-            return "redirect:/paziente?msg=Benvenuto";
-        } else if ("MEDICO".equals(utente.getRuolo())) {
-            return "redirect:/medico?msg=Benvenuto";
-        } else if ("SEGRETERIA".equals(utente.getRuolo())) {
-            // Gestione generica se serve, altrimenti gli specifici sopra
-            return "redirect:/";
+        // Redirect in base al ruolo
+        String ruolo = utente.getRuolo().toUpperCase();
+        switch (ruolo) {
+            case "PAZIENTE":
+                return "redirect:/paziente?msg=PasswordAggiornata";
+            case "MEDICO":
+                return "redirect:/medico?msg=PasswordAggiornata";
+            default:
+                return "redirect:/";
         }
-
-        return "redirect:/";
     }
 }
