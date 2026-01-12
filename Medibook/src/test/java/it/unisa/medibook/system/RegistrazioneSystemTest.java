@@ -52,20 +52,21 @@ public class RegistrazioneSystemTest {
     public void testEmailDuplicata() {
         driver.get(regUrl);
 
-        compilaCampiBaseRandom(); // CF nuovo per non avere conflitto su CF
+        // 1. Dati Statici
+        // Email: ESISTENTE (dal Seeder "Mario Rossi")
+        String emailEsistente = "mariorossi@gmail.com";
+        // CF: NUOVO (per evitare che l'errore sia sul CF invece che sull'email)
+        String cfNuovo = "LBNGNN80A01H501Z";
 
-        // Usiamo email Mario Rossi (Seeder) che sappiamo essere duplicata
-        WebElement emailInput = driver.findElement(By.name("email"));
-        emailInput.clear();
-        emailInput.sendKeys("mariorossi@gmail.com");
-
-        driver.findElement(By.name("password")).sendKeys("password123");
+        // 2. Compilazione
+        compilaForm("Nuovo", "Utente", cfNuovo, "3339988776", emailEsistente, "Password123");
         clickRegistrati();
 
+        // 3. Verifica
         WebElement error = wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("alert-danger")));
-        // Adattiamo l'assert al messaggio reale del tuo sistema
         String msg = error.getText().toLowerCase();
-        assertTrue(msg.contains("già presente") || msg.contains("già in uso") || msg.contains("esistente"),
+
+        assertTrue(msg.contains("email") && (msg.contains("presente") || msg.contains("esistente") || msg.contains("uso")),
                 "Dovrebbe segnalare email duplicata. Trovato: " + error.getText());
     }
 
@@ -148,6 +149,25 @@ public class RegistrazioneSystemTest {
         driver.findElement(By.name("codiceFiscale")).sendKeys(randomCF);
         driver.findElement(By.name("telefono")).sendKeys("3330000000");
         driver.findElement(By.name("email")).sendKeys("test" + timestamp + "@email.it");
+    }
+    private void compilaForm(String nome, String cognome, String cf, String telefono, String email, String password) {
+        driver.findElement(By.name("nome")).clear();
+        driver.findElement(By.name("nome")).sendKeys(nome);
+
+        driver.findElement(By.name("cognome")).clear();
+        driver.findElement(By.name("cognome")).sendKeys(cognome);
+
+        driver.findElement(By.name("codiceFiscale")).clear();
+        driver.findElement(By.name("codiceFiscale")).sendKeys(cf);
+
+        driver.findElement(By.name("telefono")).clear();
+        driver.findElement(By.name("telefono")).sendKeys(telefono);
+
+        driver.findElement(By.name("email")).clear();
+        driver.findElement(By.name("email")).sendKeys(email);
+
+        driver.findElement(By.name("password")).clear();
+        driver.findElement(By.name("password")).sendKeys(password);
     }
 
     private void clickRegistrati() {
