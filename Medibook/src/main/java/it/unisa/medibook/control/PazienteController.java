@@ -1,14 +1,7 @@
 package it.unisa.medibook.control;
 
 import it.unisa.medibook.model.*;
-import it.unisa.medibook.service.EmailService;
-import it.unisa.medibook.service.GestioneMedico;
-import it.unisa.medibook.service.GestionePrenotazioni;
-import it.unisa.medibook.service.GestioneReferti;
-import it.unisa.medibook.service.PasswordService; // <--- 1. IMPORT
-import it.unisa.medibook.modelStorage.PazienteRepository;
-import it.unisa.medibook.modelStorage.PrenotazioneRepository;
-import it.unisa.medibook.modelStorage.RecensioneRepository;
+import it.unisa.medibook.service.*;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -20,7 +13,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/paziente")
@@ -36,19 +28,10 @@ public class PazienteController {
     private GestioneReferti gestioneReferti;
 
     @Autowired
+    private GestioneUtenza gestioneUtenza; // <--- NUOVO SERVICE
+
+    @Autowired
     private EmailService emailService;
-
-    @Autowired
-    private PazienteRepository pazienteRepository;
-
-    @Autowired
-    private PasswordService passwordService; // <--- 2. INIEZIONE
-
-    @Autowired
-    private RecensioneRepository recensioneRepository; // Aggiungi l'autowired
-
-    @Autowired
-    private PrenotazioneRepository prenotazioneRepository; // Assicurati di averlo
 
     // --- DASHBOARD ---
     @GetMapping("")
@@ -59,24 +42,16 @@ public class PazienteController {
             return "redirect:/";
         }
 
+        // CORREZIONE QUI: Controllo e Casting
         if (utente instanceof Paziente) {
-            Paziente paziente = (Paziente) utente;
-            model.addAttribute("nomePaziente", paziente.getNome() + " " + paziente.getCognome());
+            Paziente p = (Paziente) utente; // <--- Casting necessario
 
-            List<Prenotazione> tutteLeVisite = gestionePrenotazioni.visualizzaVisitePaziente(paziente.getId());
+            // Ora puoi chiamare getNome() perché 'p' è di tipo Paziente
+            model.addAttribute("nomePaziente", p.getNome() + " " + p.getCognome());
 
-            List<Prenotazione> future = tutteLeVisite.stream()
-                    .filter(v -> "PRENOTATA".equals(v.getStato()))
-                    .collect(Collectors.toList());
-
-            List<Prenotazione> storico = tutteLeVisite.stream()
-                    .filter(v -> "EFFETTUATA".equals(v.getStato()) ||
-                            "CONCLUSA".equals(v.getStato()) ||
-                            "ANNULLATA".equals(v.getStato()))
-                    .collect(Collectors.toList());
-
-            model.addAttribute("visiteFuture", future);
-            model.addAttribute("storicoVisite", storico);
+            // Passiamo l'ID al service
+            model.addAttribute("visiteFuture", gestionePrenotazioni.getVisiteFuture(p.getId()));
+            model.addAttribute("storicoVisite", gestionePrenotazioni.getVisiteStorico(p.getId()));
         }
 
         model.addAttribute("listaMedici", gestioneMedico.dammiTuttiIMedici());
@@ -99,30 +74,17 @@ public class PazienteController {
             LocalDate dataL = LocalDate.parse(data);
             LocalTime oraL = LocalTime.parse(ora);
 
+            // 1. Chiamata al Service
             gestionePrenotazioni.nuovaPrenotazione(utente.getId(), idMedico, dataL, oraL);
 
-            // INVIO EMAIL
-            try {
-                if (utente instanceof Paziente) {
-                    Paziente p = (Paziente) utente;
-                    Medico m = gestioneMedico.getMedicoById(idMedico);
-
-                    if (p.getEmail() != null && !p.getEmail().isEmpty()) {
-                        String nomePaziente = p.getNome() + " " + p.getCognome();
-                        String nomeMedico = (m != null) ? m.getCognome() : "Specialista";
-                        String dataFormat = dataL.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-
-                        emailService.inviaEmailConferma(p.getEmail(), nomePaziente, nomeMedico, dataFormat, oraL.toString());
-                    }
-                }
-            } catch (Exception e) {
-                System.err.println("Errore email: " + e.getMessage());
-            }
+            // 2. Invio Email (Gestito tramite helper privato per pulizia)
+            inviaEmailConfermaHelper((Paziente) utente, idMedico, dataL, oraL);
 
             redirectAttributes.addAttribute("successo", "true");
 
         } catch (Exception e) {
             redirectAttributes.addAttribute("errore", e.getMessage());
+            // Manteniamo i dati inseriti per la UX
             redirectAttributes.addAttribute("prevIdMedico", idMedico);
             try {
                 Medico m = gestioneMedico.getMedicoById(idMedico);
@@ -142,7 +104,11 @@ public class PazienteController {
         Referto referto = gestioneReferti.visualizzaReferto(idVisita);
 
         if (referto == null) return "redirect:/paziente?errore=RefertoNonTrovato";
-        if (!referto.getPrenotazione().getPaziente().getId().equals(utente.getId())) return "redirect:/paziente?errore=AccessoNegato";
+
+        // Controllo di sicurezza
+        if (!referto.getPrenotazione().getPaziente().getId().equals(utente.getId())) {
+            return "redirect:/paziente?errore=AccessoNegato";
+        }
 
         model.addAttribute("referto", referto);
         return "paziente_visualizza_referto";
@@ -154,7 +120,8 @@ public class PazienteController {
         Utente utente = (Utente) session.getAttribute("utente");
         if (utente == null || !(utente instanceof Paziente)) return "redirect:/";
 
-        Paziente p = pazienteRepository.findById(utente.getId()).orElse(null);
+        // Usiamo il service per recuperare il paziente aggiornato (non la repo)
+        Paziente p = gestioneUtenza.getPazienteById(utente.getId());
         model.addAttribute("paziente", p);
 
         return "paziente_profilo";
@@ -172,33 +139,41 @@ public class PazienteController {
         if (utente == null || !(utente instanceof Paziente)) return "redirect:/";
 
         try {
-            Paziente p = pazienteRepository.findById(utente.getId()).orElseThrow();
+            // TUTTA LA LOGICA (Hash password, set dati, save) è ora qui dentro:
+            Paziente pAggiornato = gestioneUtenza.aggiornaProfiloPaziente(utente.getId(), telefono, indirizzo, nuovaPassword);
 
-            // Aggiorna dati anagrafici
-            p.setTelefono(telefono);
-            p.setIndirizzo(indirizzo);
+            // Aggiorna la sessione con i nuovi dati
+            session.setAttribute("utente", pAggiornato);
 
-            // 3. CAMBIO PASSWORD SICURO
-            if (nuovaPassword != null && !nuovaPassword.trim().isEmpty()) {
-
-                // HASHIAMO LA NUOVA PASSWORD!
-                p.setPassword(passwordService.hash(nuovaPassword));
-
-                redirectAttributes.addFlashAttribute("successo", "Profilo e Password aggiornati con successo!");
-            } else {
-                redirectAttributes.addFlashAttribute("successo", "Dati di contatto aggiornati.");
-            }
-
-            pazienteRepository.save(p);
-
-            // Aggiorna la sessione (Nota: la password in sessione sarà quella hashata, ma va bene)
-            session.setAttribute("utente", p);
+            redirectAttributes.addFlashAttribute("successo", "Profilo aggiornato con successo!");
 
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errore", "Errore aggiornamento: " + e.getMessage());
         }
 
         return "redirect:/paziente/profilo";
+    }
+
+    // --- RECENSIONE ---
+    @PostMapping("/recensione/salva")
+    public String salvaRecensione(@RequestParam Long idPrenotazione,
+                                  @RequestParam int voto,
+                                  @RequestParam String commento,
+                                  HttpSession session,
+                                  RedirectAttributes redirectAttributes) {
+
+        Utente utente = (Utente) session.getAttribute("utente");
+        if (!(utente instanceof Paziente)) return "redirect:/accedi";
+
+        try {
+            // Delega completa al service
+            gestionePrenotazioni.salvaRecensione(idPrenotazione, voto, commento, (Paziente) utente);
+            redirectAttributes.addAttribute("successo", "RecensioneInviata");
+        } catch (Exception e) {
+            redirectAttributes.addAttribute("errore", e.getMessage());
+        }
+
+        return "redirect:/paziente";
     }
 
     // --- API AJAX ---
@@ -211,32 +186,26 @@ public class PazienteController {
     @GetMapping("/api/orari-disponibili")
     @ResponseBody
     public List<LocalTime> getOrari(@RequestParam Integer medicoId, @RequestParam String data) {
-        LocalDate dataScelta = LocalDate.parse(data);
-        return gestionePrenotazioni.getOrariLiberi(medicoId, dataScelta);
+        // Parsing minimo necessario per chiamare il service
+        return gestionePrenotazioni.getOrariLiberi(medicoId, LocalDate.parse(data));
     }
 
+    // =================================================================================
+    // PRIVATE HELPERS (Per tenere puliti i metodi pubblici)
+    // =================================================================================
 
-    @PostMapping("/recensione/salva")
-    public String salvaRecensione(@RequestParam Long idPrenotazione, // Cambiato nome parametro
-                                  @RequestParam int voto,
-                                  @RequestParam String commento,
-                                  HttpSession session) {
+    private void inviaEmailConfermaHelper(Paziente p, Integer idMedico, LocalDate data, LocalTime ora) {
+        try {
+            if (p.getEmail() != null && !p.getEmail().isEmpty()) {
+                Medico m = gestioneMedico.getMedicoById(idMedico);
+                String nomePaziente = p.getNome() + " " + p.getCognome();
+                String nomeMedico = (m != null) ? m.getCognome() : "Specialista";
+                String dataFormat = data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
 
-        Utente u = (Utente) session.getAttribute("utente");
-        if (!(u instanceof Paziente)) return "redirect:/accedi";
-
-        // Cerchiamo la PRENOTAZIONE
-        Prenotazione p = prenotazioneRepository.findById(Math.toIntExact(idPrenotazione)).orElse(null);
-
-        // Controllo: esiste la prenotazione E non ha ancora una recensione?
-        if (p != null && p.getRecensione() == null) {
-
-            Recensione r = new Recensione(voto, commento, p.getMedico(), (Paziente) u);
-            r.setPrenotazione(p); // Colleghiamo la prenotazione
-
-            recensioneRepository.save(r);
+                emailService.inviaEmailConferma(p.getEmail(), nomePaziente, nomeMedico, dataFormat, ora.toString());
+            }
+        } catch (Exception e) {
+            System.err.println("Errore non bloccante invio email: " + e.getMessage());
         }
-
-        return "redirect:/paziente?successo=RecensioneInviata";
     }
 }

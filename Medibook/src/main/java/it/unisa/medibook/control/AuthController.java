@@ -1,12 +1,10 @@
 package it.unisa.medibook.control;
 
 import it.unisa.medibook.model.Paziente;
-import it.unisa.medibook.model.SegreteriaUtenti;
 import it.unisa.medibook.model.SegreteriaPrenotazioni;
+import it.unisa.medibook.model.SegreteriaUtenti;
 import it.unisa.medibook.model.Utente;
 import it.unisa.medibook.service.GestioneUtenza;
-import it.unisa.medibook.service.PasswordService; // <--- 1. Import Service
-import it.unisa.medibook.modelStorage.UtenteRepository;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -18,14 +16,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 @Controller
 public class AuthController {
 
+    // UNICO PUNTO DI CONTATTO: IL SERVICE
     @Autowired
     private GestioneUtenza gestioneUtenza;
 
-    @Autowired
-    private UtenteRepository utenteRepository;
-
-    @Autowired
-    private PasswordService passwordService; // <--- 2. Iniezione PasswordService
 
     @GetMapping("/")
     public String showHome() {
@@ -49,55 +43,36 @@ public class AuthController {
                                HttpSession session,
                                Model model) {
 
-        // ====================================================================
-        // MODIFICA LOGIN: CONTROLLO HASH
-        // ====================================================================
+        // 1. DELEGA AL SERVICE: "Dammi l'utente se le credenziali sono giuste"
+        Utente utente = gestioneUtenza.login(email, password);
 
-        // 1. Cerchiamo l'utente SOLO tramite Email
-        Utente utente = utenteRepository.findByEmail(email).orElse(null);
-
-        // 2. Verifichiamo se l'utente esiste E se la password corrisponde all'hash
-        if (utente != null && passwordService.check(password, utente.getPassword())) {
-
+        if (utente != null) {
             session.setAttribute("utente", utente);
 
-            // ====================================================================
-            // CONTROLLO PRIMO ACCESSO (Password Provvisoria)
-            // ====================================================================
-            // Controlliamo se la password digitata dall'utente è quella provvisoria
+            // --- CONTROLLO PRIMO ACCESSO (Logica di Routing) ---
+            // Nota: Controlliamo la password IN CHIARO qui perché il service ci ha detto che è valida.
+            // Se la password valida è quella di default, forziamo il cambio.
             if (password.equals("Medibook123")) {
                 return "redirect:/cambio-password-obbligatorio";
             }
-            // ====================================================================
 
+            // --- LOGICA DI REINDIRIZZAMENTO (Routing) ---
+            if (utente instanceof SegreteriaUtenti) return "redirect:/segreteria-utenti/dashboard";
+            if (utente instanceof SegreteriaPrenotazioni) return "redirect:/segreteria-prenotazioni/dashboard";
 
-            // --- GESTIONE SEGRETERIE ---
-            if (utente instanceof SegreteriaUtenti) {
-                return "redirect:/segreteria-utenti/dashboard";
-            }
-
-            if (utente instanceof SegreteriaPrenotazioni) {
-                return "redirect:/segreteria-prenotazioni/dashboard";
-            }
-
-            // --- GESTIONE ALTRI RUOLI ---
             String ruolo = utente.getRuolo().toUpperCase();
 
-            // Logica Redirect per Paziente
+            // Gestione redirect pendente (es. stavo prenotando e mi hai chiesto il login)
             if (redirect != null && !redirect.trim().isEmpty() && !redirect.equals("null")) {
-                if ("PAZIENTE".equals(ruolo)) {
-                    return "redirect:" + redirect;
-                }
+                if ("PAZIENTE".equals(ruolo)) return "redirect:" + redirect;
             }
 
             switch (ruolo) {
-                case "MEDICO":
-                    return "redirect:/medico";
+                case "MEDICO": return "redirect:/medico";
                 case "PAZIENTE":
                     String queryCerca = (cerca != null && !cerca.isEmpty()) ? "?cerca=" + cerca : "";
-                    return "redirect:/paziente" + queryCerca; // Ho corretto il path (era /)
-                default:
-                    return "redirect:/";
+                    return "redirect:/paziente" + queryCerca;
+                default: return "redirect:/";
             }
         }
 
@@ -123,14 +98,12 @@ public class AuthController {
 
     @PostMapping("/registrazione")
     public String performRegister(
-            @RequestParam String nome,
-            @RequestParam String cognome,
-            @RequestParam String codiceFiscale,
-            @RequestParam String telefono,
-            @RequestParam String email,
-            @RequestParam String password,
+            @RequestParam String nome, @RequestParam String cognome,
+            @RequestParam String codiceFiscale, @RequestParam String telefono,
+            @RequestParam String email, @RequestParam String password,
             Model model) {
 
+        // Creiamo il DTO/Oggetto base
         Paziente p = new Paziente();
         p.setNome(nome);
         p.setCognome(cognome);
@@ -138,29 +111,21 @@ public class AuthController {
         p.setTelefono(telefono);
         p.setEmail(email);
 
-        // Hash della password
-        p.setPassword(passwordService.hash(password));
-
         try {
-            gestioneUtenza.registraPaziente(p);
+            // DELEGA TOTALE AL SERVICE (Incluso Hash e Controlli Duplicati)
+            gestioneUtenza.registraPaziente(p, password);
+
             model.addAttribute("messaggio", "Registrazione completata! Ora puoi accedere.");
             return "login";
 
-        } catch (org.springframework.dao.DataIntegrityViolationException e) {
-            // CATTURIAMO L'ERRORE DI DUPLICAZIONE SPECIFICO
-            model.addAttribute("errore", "Errore: Esiste già un utente con questa Email o Codice Fiscale.");
-            return "registrazione";
-
         } catch (Exception e) {
-            // Errore generico
-            model.addAttribute("errore", "Errore generico: " + e.getMessage());
+            // Il service ci lancia eccezioni parlanti (es. "Email già presente")
+            model.addAttribute("errore", "Errore: " + e.getMessage());
             return "registrazione";
         }
     }
 
-    // ====================================================================
-    // CAMBIO PASSWORD OBBLIGATORIO
-    // ====================================================================
+    // --- CAMBIO PASSWORD OBBLIGATORIO ---
 
     @GetMapping("/cambio-password-obbligatorio")
     public String showCambioPassword() {
@@ -173,40 +138,38 @@ public class AuthController {
                                         HttpSession session,
                                         Model model) {
 
-        Utente utente = (Utente) session.getAttribute("utente");
-        if (utente == null) return "redirect:/accedi";
+        Utente utenteSessione = (Utente) session.getAttribute("utente");
+        if (utenteSessione == null) return "redirect:/accedi";
 
-        // 1. Verifica coincidenza delle password
+        // 1. Validazione base (UI Logic)
         if (!nuovaPassword.equals(confermaPassword)) {
             model.addAttribute("errore", "Le due password non coincidono.");
             return "cambio_password_obbligatorio";
         }
 
-        // 2. CONTROLLO CRITICO: La nuova password non deve essere quella di default
-        // Questo impedisce il loop del redirect obbligatorio
         if (nuovaPassword.equals("Medibook123")) {
-            model.addAttribute("errore", "Per motivi di sicurezza, la nuova password deve essere diversa da 'Medibook123'.");
+            model.addAttribute("errore", "La nuova password deve essere diversa da quella provvisoria.");
             return "cambio_password_obbligatorio";
         }
 
-        // 3. Modifica e Hashing
-        utente.setPassword(passwordService.hash(nuovaPassword));
+        try {
+            // 2. Delega al Service (Business Logic & DB)
+            Utente utenteAggiornato = gestioneUtenza.cambioPasswordObbligatorio(utenteSessione.getId(), nuovaPassword);
 
-        // 4. Salva nel Database
-        utenteRepository.save(utente);
+            // 3. Aggiorna sessione
+            session.setAttribute("utente", utenteAggiornato);
 
-        // 5. Aggiorna la sessione con l'oggetto utente aggiornato
-        session.setAttribute("utente", utente);
+            // 4. Redirect
+            String ruolo = utenteAggiornato.getRuolo().toUpperCase();
+            return switch (ruolo) {
+                case "PAZIENTE" -> "redirect:/paziente?msg=PasswordAggiornata";
+                case "MEDICO" -> "redirect:/medico?msg=PasswordAggiornata";
+                default -> "redirect:/";
+            };
 
-        // Redirect in base al ruolo
-        String ruolo = utente.getRuolo().toUpperCase();
-        switch (ruolo) {
-            case "PAZIENTE":
-                return "redirect:/paziente?msg=PasswordAggiornata";
-            case "MEDICO":
-                return "redirect:/medico?msg=PasswordAggiornata";
-            default:
-                return "redirect:/";
+        } catch (Exception e) {
+            model.addAttribute("errore", "Errore: " + e.getMessage());
+            return "cambio_password_obbligatorio";
         }
     }
 }

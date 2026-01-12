@@ -2,13 +2,12 @@ package it.unisa.medibook.control;
 
 import it.unisa.medibook.model.Medico;
 import it.unisa.medibook.model.Recensione;
-import it.unisa.medibook.modelStorage.MedicoRepository;
-import it.unisa.medibook.modelStorage.RecensioneRepository;
+import it.unisa.medibook.service.GestioneMedico;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable; // <--- Importante per leggere l'ID dall'URL
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
@@ -17,51 +16,44 @@ import java.util.List;
 public class RicercaController {
 
     @Autowired
-    private MedicoRepository medicoRepository;
+    private GestioneMedico gestioneMedico; // <--- Unico Service di riferimento
 
-    // --- METODO DI RICERCA ESISTENTE ---
+    // --- METODO DI RICERCA ---
     @GetMapping("/cerca")
     public String cercaMedici(@RequestParam(required = false) String q, Model model) {
         if (q == null || q.trim().isEmpty()) {
             return "redirect:/";
         }
 
-        // 1. RIMUOVI "Dr." o "Dott." dalla stringa di ricerca
-        String queryPulita = q.replaceAll("(?i)^dr\\.?\\s+|^dott\\.?\\s+", "");
+        // 1. La logica di pulizia "Dr./Dott." e la query DB sono ora nel Service
+        List<Medico> risultati = gestioneMedico.ricercaAvanzata(q);
 
-        // 2. Cerca nel DB usando la stringa pulita
-        List<Medico> risultati = medicoRepository.cercaGlobale(queryPulita);
-
-        // 3. Passa i risultati
+        // 2. Passiamo i risultati alla vista
         model.addAttribute("medici", risultati);
 
-        // IMPORTANTE: Nel model rimettiamo 'q' originale per mostrarlo nella barra di ricerca all'utente
+        // Manteniamo la query originale per la barra di ricerca dell'utente
         model.addAttribute("query", q);
 
         return "risultatiRicerca";
     }
 
-    @Autowired
-    private RecensioneRepository recensioneRepository; // Aggiungi questo
-
+    // --- DETTAGLI MEDICO E RECENSIONI ---
     @GetMapping("/medico/{id}")
-    public String dettagliMedico(@PathVariable Long id, Model model) {
-        Medico medico = medicoRepository.findById(id).orElse(null);
+    public String dettagliMedico(@PathVariable Integer id, Model model) {
+        // 1. Recupero Medico tramite Service
+        Medico medico = gestioneMedico.getMedicoById(id);
         if (medico == null) return "redirect:/";
 
-        // Recupera le recensioni
-        List<Recensione> recensioni = recensioneRepository.findByMedicoId(Math.toIntExact(id));
+        // 2. Recupero Recensioni tramite Service
+        List<Recensione> recensioni = gestioneMedico.getRecensioniPerMedico(id);
+
+        // 3. Calcolo Media tramite Service
+        double media = gestioneMedico.calcolaMediaVoti(recensioni);
+
         model.addAttribute("medico", medico);
         model.addAttribute("recensioni", recensioni);
-
-        // Calcolo media voti (opzionale ma carino)
-        double media = 0.0;
-        if (!recensioni.isEmpty()) {
-            media = recensioni.stream().mapToInt(Recensione::getVoto).average().orElse(0.0);
-        }
         model.addAttribute("mediaVoti", String.format("%.1f", media));
 
         return "dettagli_medico";
     }
-
 }

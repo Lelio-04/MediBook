@@ -1,77 +1,42 @@
 package it.unisa.medibook.control;
 
-import it.unisa.medibook.model.Prenotazione;
-import it.unisa.medibook.model.Referto;
-import it.unisa.medibook.model.SegreteriaPrenotazioni;
-import it.unisa.medibook.model.Utente;
-import it.unisa.medibook.service.EmailService; // <--- 1. Import EmailService
+import it.unisa.medibook.model.*;
 import it.unisa.medibook.service.GestionePrenotazioni;
 import it.unisa.medibook.service.GestioneReferti;
-import it.unisa.medibook.modelStorage.PrenotazioneRepository;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter; // <--- Import Formatter
 
 @Controller
 @RequestMapping("/segreteria-prenotazioni")
 public class SegreteriaPrenotazioniController {
 
-    @Autowired
-    private PrenotazioneRepository prenotazioneRepository;
-
-    @Autowired
-    private GestionePrenotazioni gestionePrenotazioni;
-
-    @Autowired
-    private GestioneReferti gestioneReferti;
-
-    @Autowired
-    private EmailService emailService; // <--- 2. Iniezione del Service Email
+    @Autowired private GestionePrenotazioni gestionePrenotazioni;
+    @Autowired private GestioneReferti gestioneReferti;
 
     @GetMapping("/dashboard")
     public String dashboard(@RequestParam(required = false) String q,
-                            @RequestParam(required = false) String filtro, // <--- NUOVO PARAMETRO
-                            HttpSession session,
-                            Model model) {
+                            @RequestParam(required = false) String filtro,
+                            HttpSession session, Model model) {
 
         Utente utente = (Utente) session.getAttribute("utente");
-        if (utente == null || !(utente instanceof SegreteriaPrenotazioni)) {
-            return "redirect:/";
-        }
+        if (utente == null || !(utente instanceof SegreteriaPrenotazioni)) return "redirect:/";
 
-        // LOGICA DI FILTRAGGIO
-        if ("oggi".equals(filtro)) {
-            // CASO 1: Filtro OGGI
-            model.addAttribute("listaPrenotazioni", prenotazioneRepository.findByData(LocalDate.now()));
-            model.addAttribute("filtroAttivo", "oggi"); // Per evidenziare il bottone o mostrare messaggi
-        }
-        else if (q != null && !q.trim().isEmpty()) {
-            // CASO 2: Ricerca per testo
-            model.addAttribute("listaPrenotazioni",
-                    prenotazioneRepository.findByPazienteNomeContainingIgnoreCaseOrPazienteCognomeContainingIgnoreCase(q, q));
-            model.addAttribute("searchKeyword", q);
-        }
-        else {
-            // CASO 3: Mostra tutto (Default)
-            model.addAttribute("listaPrenotazioni", prenotazioneRepository.findAll());
-        }
-
+        // Il service decide cosa restituire in base ai parametri
+        model.addAttribute("listaPrenotazioni", gestionePrenotazioni.ricercaPrenotazioni(q, filtro));
+        model.addAttribute("filtroAttivo", filtro);
+        model.addAttribute("searchKeyword", q);
         model.addAttribute("oggi", LocalDate.now());
+
         return "dashboard-agenda";
     }
 
-    // --- AGGIORNAMENTO CON INVIO EMAIL ---
     @PostMapping("/aggiorna")
     public String aggiorna(@RequestParam Integer id,
                            @RequestParam LocalDate nuovaData,
@@ -83,55 +48,38 @@ public class SegreteriaPrenotazioniController {
         Utente utente = (Utente) session.getAttribute("utente");
         if (utente == null || !"SEGRETERIA".equals(utente.getRuolo())) return "redirect:/";
 
-        // ============================================================
-        // NUOVO CONTROLLO: DATA NEL PASSATO
-        // ============================================================
-        if (nuovaData.isBefore(LocalDate.now())) {
-            redirectAttributes.addFlashAttribute("errore", "Errore: Non è possibile impostare una data nel passato.");
-            return "redirect:/segreteria-prenotazioni/dashboard";
-        }
-        // ============================================================
-
         try {
-            // CASO 1: CONCLUSA -> Va al Referto
+            // Caso speciale: se lo stato è CONCLUSA, il service deve preparare la transizione
             if ("CONCLUSA".equals(nuovoStato)) {
-                // Notare che passiamo comunque per il service che ha i controlli OCL
                 gestionePrenotazioni.modificaPrenotazione(id, nuovaData, nuovaOra, "EFFETTUATA");
                 return "redirect:/segreteria-prenotazioni/referto/nuovo?id=" + id;
             }
 
-            // CASO 2: MODIFICA NORMALE
-            else {
-                gestionePrenotazioni.modificaPrenotazione(id, nuovaData, nuovaOra, nuovoStato);
-                redirectAttributes.addFlashAttribute("successo", "Prenotazione aggiornata correttamente!");
+            // La logica "Data nel passato" è già dentro gestionePrenotazioni.modificaPrenotazione!
+            gestionePrenotazioni.modificaPrenotazione(id, nuovaData, nuovaOra, nuovoStato);
 
-                if (!"CANCELLATA".equals(nuovoStato)) {
-                    Prenotazione p = prenotazioneRepository.findById(id).orElse(null);
-                    if (p != null) {
-                        inviaEmailModifica(p);
-                    }
-                }
+            // Invio notifiche delegato (può essere messo dentro modificaPrenotazione o chiamato qui)
+            if (!"CANCELLATA".equals(nuovoStato)) {
+                gestionePrenotazioni.inviaNotificheModifica(id);
             }
 
+            redirectAttributes.addFlashAttribute("successo", "Prenotazione aggiornata correttamente!");
+
         } catch (Exception e) {
-            // Qui catturiamo eventuali eccezioni lanciate dal Service (es. violazione vincoli OCL)
-            redirectAttributes.addFlashAttribute("errore", "Impossibile aggiornare: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("errore", e.getMessage());
         }
 
         return "redirect:/segreteria-prenotazioni/dashboard";
     }
-
-    // --- GESTIONE REFERTO ---
 
     @GetMapping("/referto/nuovo")
     public String showNuovoReferto(@RequestParam Integer id, HttpSession session, Model model) {
         Utente utente = (Utente) session.getAttribute("utente");
         if (utente == null || !"SEGRETERIA".equals(utente.getRuolo())) return "redirect:/";
 
-        Prenotazione p = prenotazioneRepository.findById(id).orElse(null);
-
+        Prenotazione p = gestionePrenotazioni.getPrenotazioneById(id);
         if (p == null || !"EFFETTUATA".equals(p.getStato())) {
-            return "redirect:/segreteria-prenotazioni/dashboard?errore=DeviPrimaImpostareEffettuata";
+            return "redirect:/segreteria-prenotazioni/dashboard?errore=StatoNonValido";
         }
 
         model.addAttribute("prenotazione", p);
@@ -148,72 +96,14 @@ public class SegreteriaPrenotazioniController {
         if (utente == null || !"SEGRETERIA".equals(utente.getRuolo())) return "redirect:/";
 
         try {
-            Prenotazione p = prenotazioneRepository.findById(prenotazioneId)
-                    .orElseThrow(() -> new Exception("Prenotazione non trovata"));
-
-            Referto r = new Referto();
-            r.setContenuto(contenuto);
-            r.setDataCaricamento(LocalDateTime.now());
-
-            gestioneReferti.caricaReferto(r, p);
-
-            redirectAttributes.addFlashAttribute("successo", "Referto salvato e visita Conclusa!");
-
+            // Usiamo il metodo creato per il Medico: riutilizzo del codice!
+            gestioneReferti.salvaNuovoReferto(prenotazioneId, contenuto);
+            redirectAttributes.addFlashAttribute("successo", "Referto salvato!");
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errore", "Errore salvataggio referto: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("errore", e.getMessage());
             return "redirect:/segreteria-prenotazioni/referto/nuovo?id=" + prenotazioneId;
         }
 
         return "redirect:/segreteria-prenotazioni/dashboard";
-    }
-
-    @GetMapping("/cancella")
-    public String cancella(@RequestParam Integer id, HttpSession session) {
-        prenotazioneRepository.deleteById(id);
-        return "redirect:/segreteria-prenotazioni/dashboard";
-    }
-
-    private void inviaEmailModifica(Prenotazione p) {
-
-        String dataFormat = p.getData().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-        String oraFormat = p.getOra().toString();
-        String nomePaziente = p.getPaziente().getNome() + " " + p.getPaziente().getCognome();
-        String nomeMedico = p.getMedico().getCognome();
-
-        // 1. INVIO AL PAZIENTE
-        try {
-            String emailPaziente = p.getPaziente().getEmail();
-            if (emailPaziente != null && !emailPaziente.isEmpty()) {
-                String oggetto = "⚠️ Modifica Appuntamento - MediBook";
-
-                emailService.inviaEmailModifica(
-                        emailPaziente,
-                        oggetto,
-                        nomePaziente,
-                        nomeMedico,
-                        dataFormat,
-                        oraFormat
-                );
-            }
-        } catch (Exception e) {
-            System.err.println("Errore invio email paziente: " + e.getMessage());
-        }
-
-        // 2. INVIO AL MEDICO (NUOVO)
-        try {
-            String emailMedico = p.getMedico().getEmail();
-            // Controlliamo che il medico abbia una mail
-            if (emailMedico != null && !emailMedico.isEmpty()) {
-
-                emailService.inviaEmailModificaMedico(
-                        emailMedico,
-                        nomePaziente,
-                        dataFormat,
-                        oraFormat
-                );
-            }
-        } catch (Exception e) {
-            System.err.println("Errore invio email medico: " + e.getMessage());
-        }
     }
 }

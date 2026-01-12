@@ -1,20 +1,16 @@
 package it.unisa.medibook.service;
 
-import it.unisa.medibook.model.Medico;
-import it.unisa.medibook.model.Paziente;
-import it.unisa.medibook.model.Prenotazione;
-import it.unisa.medibook.modelStorage.MedicoRepository;
-import it.unisa.medibook.modelStorage.PazienteRepository;
-import it.unisa.medibook.modelStorage.PrenotazioneRepository;
+import it.unisa.medibook.model.*;
+import it.unisa.medibook.modelStorage.*;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class GestionePrenotazioni {
@@ -28,201 +24,248 @@ public class GestionePrenotazioni {
     @Autowired
     private PazienteRepository pazienteRepository;
 
-    public Prenotazione modificaPrenotazione(Integer id, LocalDate nuovaData, LocalTime nuovaOra, String nuovoStato) throws Exception {
-        Optional<Prenotazione> pOpt = prenotazioneRepository.findById(id);
+    @Autowired
+    private RecensioneRepository recensioneRepository;
 
-        if (pOpt.isPresent()) {
-            Prenotazione p = pOpt.get();
+    @Autowired
+    private EmailService emailService;
 
-            // 1. Se la data o l'ora sono diverse da quelle attuali, facciamo i controlli
-            if (!p.getData().equals(nuovaData) || !p.getOra().equals(nuovaOra)) {
+    // --- METODI DI RICERCA ---
 
-                if (nuovaData.isBefore(LocalDate.now())) {
-                    throw new Exception("Errore: Non è possibile spostare una visita nel passato.");
-                }
-
-                // Controlliamo se il nuovo slot è occupato (escludendo se stessa)
-                boolean slotOccupato = prenotazioneRepository.existsByMedicoIdAndDataAndOraAndIdNot(
-                        p.getMedico().getId(),
-                        nuovaData,
-                        nuovaOra,
-                        id
-                );
-
-                if (slotOccupato) {
-                    throw new Exception("Errore: Orario non disponibile. Il medico ha già una visita in questo orario.");
-                }
-
-                // Applichiamo i nuovi orari
-                p.setData(nuovaData);
-                p.setOra(nuovaOra);
-            }
-
-            // 2. Aggiorniamo lo stato
-            p.setStato(nuovoStato);
-
-            return prenotazioneRepository.save(p);
-        }
-        throw new Exception("Prenotazione non trovata");
-    }
-
-    public Prenotazione aggiornaStatoVisita(Integer id, String nuovoStato) {
-        Optional<Prenotazione> pOpt = prenotazioneRepository.findById(id);
-
-        if (pOpt.isPresent()) {
-            Prenotazione p = pOpt.get();
-            p.setStato(nuovoStato);
-            return prenotazioneRepository.save(p);
-        }
-        return null;
+    public Prenotazione getPrenotazioneById(Integer id) {
+        return prenotazioneRepository.findById(id).orElse(null);
     }
 
     public List<Prenotazione> visualizzaVisiteMedico(Integer medicoId) {
         return prenotazioneRepository.findByMedicoId(medicoId);
     }
 
-    public List<Prenotazione> visualizzaVisitePaziente(Integer pazienteId) {
-        return prenotazioneRepository.findByPazienteId(pazienteId);
+
+    // --- LOGICA DI FILTRAGGIO (Per Dashboard Paziente) ---
+
+    public List<Prenotazione> getVisiteFuture(Integer pazienteId) {
+        return prenotazioneRepository.findByPazienteId(pazienteId).stream()
+                .filter(v -> "PRENOTATA".equals(v.getStato()))
+                .collect(Collectors.toList());
     }
 
-    public Prenotazione nuovaPrenotazione(Integer pazienteId, Integer medicoId, LocalDate data, LocalTime ora) throws Exception {
+    public List<Prenotazione> getVisiteStorico(Integer pazienteId) {
+        return prenotazioneRepository.findByPazienteId(pazienteId).stream()
+                .filter(v -> "EFFETTUATA".equals(v.getStato()) ||
+                        "CONCLUSA".equals(v.getStato()) ||
+                        "ANNULLATA".equals(v.getStato()))
+                .collect(Collectors.toList());
+    }
 
+    // --- GESTIONE PRENOTAZIONI (Creazione e Modifica) ---
+
+    @Transactional
+    public Prenotazione nuovaPrenotazione(Integer pazienteId, Integer medicoId, LocalDate data, LocalTime ora) throws Exception {
         if (data.isBefore(LocalDate.now())) {
             throw new Exception("Errore: Non puoi prenotare nel passato!");
         }
 
         boolean slotOccupato = prenotazioneRepository.existsByMedicoIdAndDataAndOra(medicoId, data, ora);
-
         if (slotOccupato) {
             throw new Exception("Errore: Orario non disponibile per questo medico.");
         }
 
-        Optional<Paziente> pazienteOpt = pazienteRepository.findById(pazienteId);
-        Optional<Medico> medicoOpt = medicoRepository.findById(Long.valueOf(medicoId));
+        Paziente paziente = pazienteRepository.findById(pazienteId)
+                .orElseThrow(() -> new Exception("Paziente non trovato"));
+        Medico medico = medicoRepository.findById(Long.valueOf(medicoId))
+                .orElseThrow(() -> new Exception("Medico non trovato"));
 
-        if (pazienteOpt.isPresent() && medicoOpt.isPresent()) {
-            Prenotazione p = new Prenotazione();
-            p.setData(data);
-            p.setOra(ora);
-            p.setStato("PRENOTATA");
-            p.setPaziente(pazienteOpt.get());
-            p.setMedico(medicoOpt.get());
+        Prenotazione p = new Prenotazione();
+        p.setData(data);
+        p.setOra(ora);
+        p.setStato("PRENOTATA");
+        p.setPaziente(paziente);
+        p.setMedico(medico);
 
-            return prenotazioneRepository.save(p);
-        } else {
-            throw new Exception("Errore: Utente o Medico non trovato.");
-        }
+        return prenotazioneRepository.save(p);
     }
 
+    @Transactional
+    public Prenotazione modificaPrenotazione(Integer id, LocalDate nuovaData, LocalTime nuovaOra, String nuovoStato) throws Exception {
+        Prenotazione p = prenotazioneRepository.findById(id)
+                .orElseThrow(() -> new Exception("Prenotazione non trovata"));
+
+        if (!p.getData().equals(nuovaData) || !p.getOra().equals(nuovaOra)) {
+            if (nuovaData.isBefore(LocalDate.now())) {
+                throw new Exception("Errore: Non è possibile spostare una visita nel passato.");
+            }
+
+            boolean slotOccupato = prenotazioneRepository.existsByMedicoIdAndDataAndOraAndIdNot(
+                    p.getMedico().getId(), nuovaData, nuovaOra, id);
+
+            if (slotOccupato) {
+                throw new Exception("Errore: Orario non disponibile.");
+            }
+
+            p.setData(nuovaData);
+            p.setOra(nuovaOra);
+        }
+
+        p.setStato(nuovoStato);
+        return prenotazioneRepository.save(p);
+    }
+
+    @Transactional
+    public void aggiornaStatoVisita(Integer id, String nuovoStato) {
+        prenotazioneRepository.findById(id).ifPresent(p -> {
+            p.setStato(nuovoStato);
+            prenotazioneRepository.save(p);
+        });
+    }
+
+    // --- CALENDARIO E TURNI ---
 
     public List<Prenotazione> visualizzaVisitePerCalendario(Integer medicoId) {
-        // Recuperiamo solo quelle con stato "PRENOTATA"
-        // (Ignoriamo quelle CANCELLATE o già CONCLUSE per non affollare il calendario)
         return prenotazioneRepository.findByMedicoIdAndStato(medicoId, "PRENOTATA");
     }
+
+    /**
+     * Prepara i dati degli eventi in un formato compatibile con FullCalendar (JSON-ready)
+     */
+    public List<Map<String, Object>> getEventiCalendarioJSON(Integer medicoId) {
+        List<Prenotazione> visite = visualizzaVisitePerCalendario(medicoId);
+        List<Map<String, Object>> eventi = new ArrayList<>();
+
+        for (Prenotazione p : visite) {
+            Map<String, Object> evento = new HashMap<>();
+            evento.put("id", p.getId());
+            evento.put("title", p.getPaziente().getCognome() + " " + p.getPaziente().getNome());
+            evento.put("start", p.getData().toString() + "T" + p.getOra().toString());
+            evento.put("backgroundColor", "#28a745");
+            evento.put("extendedProps", Map.of(
+                    "stato", p.getStato(),
+                    "codiceFiscale", p.getPaziente().getCodiceFiscale()
+            ));
+            eventi.add(evento);
+        }
+        return eventi;
+    }
+
     public List<Integer> getGiorniLavorativi(Integer medicoId) {
         Medico m = medicoRepository.findById(Long.valueOf(medicoId)).orElse(null);
         if (m == null || m.getTurni() == null) return Collections.emptyList();
 
         List<Integer> giorni = new ArrayList<>();
-
-        // Esempio stringa: "1:09:00-13:00,3:15:00-19:00"
         String[] regole = m.getTurni().split(",");
-
         for (String regola : regole) {
-            // regola = "1:09:00-13:00"
             String[] parti = regola.split(":");
-            int giorno = Integer.parseInt(parti[0]); // Prende "1"
-            giorni.add(giorno);
+            giorni.add(Integer.parseInt(parti[0]));
         }
         return giorni;
     }
 
-    // 2. API SLOT LIBERI (Calcola orari in base al giorno specifico)
-// 2. API SLOT LIBERI (Calcola orari in base al giorno specifico)
     public List<LocalTime> getOrariLiberi(Integer medicoId, LocalDate data) {
-        System.out.println("--- API ORARI RICHIESTA: Medico " + medicoId + " - Data " + data + " ---");
-
-        // 1. Recupero Medico
         Medico m = medicoRepository.findById(Long.valueOf(medicoId)).orElse(null);
-        if (m == null || m.getTurni() == null) {
-            System.out.println("ERRORE: Medico nullo o turni nulli.");
-            return Collections.emptyList();
-        }
+        if (m == null || m.getTurni() == null) return Collections.emptyList();
 
-        // 2. Calcolo giorno della settimana (1=Lun, 7=Dom)
         int giornoRichiesto = data.getDayOfWeek().getValue();
-        System.out.println("Giorno della settimana richiesto: " + giornoRichiesto);
-
         LocalTime inizioTurno = null;
         LocalTime fineTurno = null;
 
-        // 3. Parsing della stringa (es. "1:09:00-13:00, 3:15:00-19:00" oppure "1:9-13")
         try {
-            // Rimuovo spazi bianchi
-            String turniPuliti = m.getTurni().replace(" ", "");
-            String[] regole = turniPuliti.split(",");
-
+            String[] regole = m.getTurni().replace(" ", "").split(",");
             for (String regola : regole) {
-                // Controllo sicurezza formato
                 if (!regola.contains(":")) continue;
-
-                // Divide il giorno dagli orari. Es: "1" e "9-13"
-                String[] parti = regola.split(":", 2); // Split limitato a 2 per evitare errori se l'ora ha i due punti
-                int giornoRegola = Integer.parseInt(parti[0]);
-
-                // Se abbiamo trovato il giorno che ci interessa
-                if (giornoRegola == giornoRichiesto) {
-                    System.out.println("Trovata regola per oggi: " + regola);
-
-                    String[] orari = parti[1].split("-"); // ["9", "13"] oppure ["09:00", "13:00"]
-
-                    // *** FIX: Normalizzazione orario (aggiunge :00 se manca) ***
-                    String startStr = orari[0];
-                    String endStr = orari[1];
-
-                    if (!startStr.contains(":")) startStr += ":00";
-                    if (!endStr.contains(":")) endStr += ":00";
-
-                    // Formatta anche i numeri singoli (es. "9:00" -> "09:00") per sicurezza, anche se parse lo gestisce spesso
-                    if (startStr.length() == 4) startStr = "0" + startStr;
-                    if (endStr.length() == 4) endStr = "0" + endStr;
-
-                    inizioTurno = LocalTime.parse(startStr);
-                    fineTurno = LocalTime.parse(endStr);
+                String[] parti = regola.split(":", 2);
+                if (Integer.parseInt(parti[0]) == giornoRichiesto) {
+                    String[] orari = parti[1].split("-");
+                    String startStr = orari[0].contains(":") ? orari[0] : orari[0] + ":00";
+                    String endStr = orari[1].contains(":") ? orari[1] : orari[1] + ":00";
+                    inizioTurno = LocalTime.parse(startStr.length() == 4 ? "0" + startStr : startStr);
+                    fineTurno = LocalTime.parse(endStr.length() == 4 ? "0" + endStr : endStr);
                     break;
                 }
             }
-        } catch (Exception e) {
-            System.err.println("CRASH DURANTE IL PARSING TURNI: " + e.getMessage());
-            e.printStackTrace();
-            return Collections.emptyList();
-        }
+        } catch (Exception e) { return Collections.emptyList(); }
 
-        // Se non abbiamo trovato orari per oggi
-        if (inizioTurno == null) {
-            System.out.println("Nessun turno trovato per questo giorno.");
-            return Collections.emptyList();
-        }
+        if (inizioTurno == null) return Collections.emptyList();
 
-        // 4. Generazione Slot Temporali
         List<LocalTime> slots = new ArrayList<>();
         LocalTime current = inizioTurno;
-
         while (current.isBefore(fineTurno)) {
             slots.add(current);
             current = current.plusMinutes(30);
         }
 
-        // 5. Rimozione Slot Occupati
         List<Prenotazione> occupati = prenotazioneRepository.findByMedicoIdAndData(medicoId, data);
-        System.out.println("Prenotazioni già esistenti oggi: " + occupati.size());
-
         for (Prenotazione p : occupati) {
             slots.remove(p.getOra());
         }
-
-        System.out.println("Slot restituiti al frontend: " + slots.size());
         return slots;
+    }
+
+    // --- RECENSIONI ---
+
+    @Transactional
+    public void salvaRecensione(Long idPrenotazione, int voto, String commento, Paziente autore) throws Exception {
+        Prenotazione p = prenotazioneRepository.findById(Math.toIntExact(idPrenotazione))
+                .orElseThrow(() -> new Exception("Prenotazione non trovata"));
+
+        if (p.getRecensione() != null) {
+            throw new Exception("Hai già recensito questa visita!");
+        }
+
+        Recensione r = new Recensione(voto, commento, p.getMedico(), autore);
+        r.setPrenotazione(p);
+        recensioneRepository.save(r);
+    }
+    public List<Prenotazione> ricercaPrenotazioni(String query, String filtro) {
+        if ("oggi".equals(filtro)) {
+            return prenotazioneRepository.findByData(LocalDate.now());
+        }
+        if (query != null && !query.trim().isEmpty()) {
+            return prenotazioneRepository.findByPazienteNomeContainingIgnoreCaseOrPazienteCognomeContainingIgnoreCase(query, query);
+        }
+        return prenotazioneRepository.findAll();
+    }
+    public void inviaNotificheModifica(Integer id) {
+        Prenotazione p = prenotazioneRepository.findById(id).orElse(null);
+        if (p != null && p.getPaziente().getEmail() != null) {
+            String dataFormat = p.getData().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            String oraFormat = p.getOra().toString();
+            String nomePaziente = p.getPaziente().getNome() + " " + p.getPaziente().getCognome();
+            String nomeMedico = p.getMedico().getCognome();
+
+            // 1. INVIO AL PAZIENTE
+            try {
+                String emailPaziente = p.getPaziente().getEmail();
+                if (emailPaziente != null && !emailPaziente.isEmpty()) {
+                    String oggetto = "⚠️ Modifica Appuntamento - MediBook";
+
+                    emailService.inviaEmailModifica(
+                            emailPaziente,
+                            oggetto,
+                            nomePaziente,
+                            nomeMedico,
+                            dataFormat,
+                            oraFormat
+                    );
+                }
+            } catch (Exception e) {
+                System.err.println("Errore invio email paziente: " + e.getMessage());
+            }
+
+            // 2. INVIO AL MEDICO (NUOVO)
+            try {
+                String emailMedico = p.getMedico().getEmail();
+                // Controlliamo che il medico abbia una mail
+                if (emailMedico != null && !emailMedico.isEmpty()) {
+
+                    emailService.inviaEmailModificaMedico(
+                            emailMedico,
+                            nomePaziente,
+                            dataFormat,
+                            oraFormat
+                    );
+                }
+            } catch (Exception e) {
+                System.err.println("Errore invio email medico: " + e.getMessage());
+            }
+        }
     }
 }
