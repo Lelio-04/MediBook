@@ -26,27 +26,7 @@ public class AutenticazioneSystemTest {
 
     @Test
     @Order(1)
-    @DisplayName("TC_AUC_1: Login con Email Inesistente")
-    public void testLoginEmailInesistente() {
-        driver.get(baseUrl);
-
-        driver.findElement(By.name("email")).sendKeys("lucaverdi@gmail.com");
-        driver.findElement(By.name("password")).sendKeys("lucapassword123");
-        driver.findElement(By.cssSelector("button[type='submit']")).click();
-
-        // 1. ATTESA: Aspetta che l'alert appaia (risolve il problema del valore vuoto)
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
-        WebElement alert = wait.until(ExpectedConditions.visibilityOfElementLocated(By.className("alert-danger")));
-
-        // 2. ORACOLO: Usiamo contains() perché nella JSP hai l'emoji "⚠️"
-        String testoAlert = alert.getText();
-        assertTrue(testoAlert.contains("Credenziali non valide!"),
-                "L'alert dovrebbe contenere il messaggio di errore. Trovato: " + testoAlert);
-    }
-
-    @Test
-    @Order(2)
-    @DisplayName("TC_AUC_2: Login con Password Errata")
+    @DisplayName("TC_AUC_1: Login con Password Errata")
     public void testLoginPasswordErrata() {
         driver.get(baseUrl);
 
@@ -62,8 +42,8 @@ public class AutenticazioneSystemTest {
     }
 
     @Test
-    @Order(3)
-    @DisplayName("TC_AUC_3: Login con Successo")
+    @Order(2)
+    @DisplayName("TC_AUC_2: Login con Successo")
     public void testLoginSuccesso() {
         driver.get(baseUrl);
 

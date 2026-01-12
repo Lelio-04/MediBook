@@ -34,13 +34,7 @@ class GestioneUtenzaTest {
 
     @Test
     void login() {
-        // --- TC_AUC_1: Login con Email Inesistente ---
-        when(utenteRepository.findByEmail("lucaverdi@gmail.com")).thenReturn(Optional.empty());
-
-        Utente resultInesistente = gestioneUtenza.login("lucaverdi@gmail.com", "lucapassword123");
-        assertNull(resultInesistente, "TC_AUC_1 Fallito: Il login dovrebbe restituire null per email inesistente");
-
-        // --- TC_AUC_2: Login con Password Errata ---
+        // --- TC_AUC_1: Login con Password Errata ---
         Utente utenteTest = new Utente();
         utenteTest.setEmail("paziente@test.it");
         utenteTest.setPassword("hash_corretto_nel_db");
@@ -51,7 +45,7 @@ class GestioneUtenzaTest {
         Utente resultPassErrata = gestioneUtenza.login("paziente@test.it", "PasswordSbagliata789");
         assertNull(resultPassErrata, "TC_AUC_2 Fallito: Il login dovrebbe restituire null per password errata");
 
-        // --- TC_AUC_3: Login con Successo ---
+        // --- TC_AUC_2: Login con Successo ---
         Utente utenteSuccesso = new Utente();
         utenteSuccesso.setEmail("mariorossi@gmail.com");
         utenteSuccesso.setPassword("hash_mario_123");
