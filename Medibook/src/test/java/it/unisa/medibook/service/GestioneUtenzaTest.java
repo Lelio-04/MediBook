@@ -14,7 +14,6 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -142,6 +141,7 @@ class GestioneUtenzaTest {
         assertEquals("PAZIENTE", nuovoP.getRuolo());
         assertEquals("hash_sicuro", nuovoP.getPassword());
     }
+
     @Test
     void cambioPasswordObbligatorio() {
         // --- TC_CPW_1: Cambio Password Corretto ---
