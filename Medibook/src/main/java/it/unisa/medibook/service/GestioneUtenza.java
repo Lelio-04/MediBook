@@ -84,7 +84,7 @@ public class GestioneUtenza {
         }
 
 
-        if (pazienteRepository.findByCodiceFiscale(p.getCodiceFiscale()) != null) {
+        if (pazienteRepository.findByCodiceFiscale(p.getCodiceFiscale()).isPresent()) {
             throw new Exception("Codice Fiscale già presente.");
         }
 

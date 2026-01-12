@@ -60,9 +60,8 @@ class GestioneUtenzaTest {
     @Test
     void registraPaziente() {
         // --- Test: Validazione Lunghezza Codice Fiscale (TC_REG_3 - Lato Server) ---
-        // Deve fallire PRIMA di chiamare il database
         Paziente pCfCorto = new Paziente();
-        pCfCorto.setCodiceFiscale("RSSMRA80"); // < 16 chars
+        pCfCorto.setCodiceFiscale("RSSMRA80");
 
         Exception exCfLen = assertThrows(Exception.class, () -> {
             gestioneUtenza.registraPaziente(pCfCorto, "password123");
@@ -71,7 +70,7 @@ class GestioneUtenzaTest {
 
         // --- TC_REG_1: Formato Email Errato ---
         Paziente pEmailBad = new Paziente();
-        pEmailBad.setCodiceFiscale("RSSMRA80A01H501U"); // CF Valido per passare il primo check
+        pEmailBad.setCodiceFiscale("RSSMRA80A01H501U");
         pEmailBad.setEmail("email_senza_chiocciola");
 
         Exception exEmailFmt = assertThrows(Exception.class, () -> {
@@ -85,7 +84,7 @@ class GestioneUtenzaTest {
         pPassShort.setEmail("test@valid.it");
 
         Exception exPass = assertThrows(Exception.class, () -> {
-            gestioneUtenza.registraPaziente(pPassShort, "short"); // < 8 chars
+            gestioneUtenza.registraPaziente(pPassShort, "short");
         });
         assertEquals("Lunghezza Password non valida (min. 8 caratteri)", exPass.getMessage());
 
@@ -94,7 +93,7 @@ class GestioneUtenzaTest {
         pDuplicato.setEmail("mariorossi@gmail.com");
         pDuplicato.setCodiceFiscale("RSSMRA80A01H501U");
 
-        // Mock: CF è valido, Email valida, Password valida... ma Email esiste nel DB
+        // Mock: L'email esiste già
         when(utenteRepository.findByEmail("mariorossi@gmail.com")).thenReturn(Optional.of(new Utente()));
 
         Exception exEmailDup = assertThrows(Exception.class, () -> {
@@ -104,12 +103,12 @@ class GestioneUtenzaTest {
 
         // --- Test: Codice Fiscale Duplicato (Database) ---
         Paziente pCfDuplicato = new Paziente();
-        pCfDuplicato.setEmail("nuovautente@gmail.com"); // Email nuova
-        pCfDuplicato.setCodiceFiscale("RSSMRA80A01H501U"); // CF esistente
+        pCfDuplicato.setEmail("nuovautente@gmail.com");
+        pCfDuplicato.setCodiceFiscale("RSSMRA80A01H501U");
 
         // Setup Mock
         when(utenteRepository.findByEmail("nuovautente@gmail.com")).thenReturn(Optional.empty());
-        // Simula che il CF esista già (restituisce un paziente qualsiasi invece di null)
+        // Simula che il CF esista già (restituisce un Optional con dentro un paziente)
         when(pazienteRepository.findByCodiceFiscale("RSSMRA80A01H501U")).thenReturn(Optional.of(new Paziente()));
 
         Exception exCfDup = assertThrows(Exception.class, () -> {
@@ -122,11 +121,14 @@ class GestioneUtenzaTest {
         nuovoP.setNome("Mario");
         nuovoP.setCognome("Rossi");
         nuovoP.setEmail("mariorossi80@gmail.com");
-        nuovoP.setCodiceFiscale("VRDLCU80A01H501U"); // Diverso da quello duplicato sopra
+        nuovoP.setCodiceFiscale("VRDLCU80A01H501U");
 
         // Mock: Tutto libero
         when(utenteRepository.findByEmail("mariorossi80@gmail.com")).thenReturn(Optional.empty());
-        when(pazienteRepository.findByCodiceFiscale("VRDLCU80A01H501U")).thenReturn(null); // Nessun duplicato CF
+
+        // CORREZIONE QUI: Restituire Optional.empty() invece di null
+        when(pazienteRepository.findByCodiceFiscale("VRDLCU80A01H501U")).thenReturn(Optional.empty());
+
         when(passwordService.hash("PasswordSicura123")).thenReturn("hash_sicuro");
 
         assertDoesNotThrow(() -> {
@@ -140,7 +142,6 @@ class GestioneUtenzaTest {
         assertEquals("PAZIENTE", nuovoP.getRuolo());
         assertEquals("hash_sicuro", nuovoP.getPassword());
     }
-
     @Test
     void cambioPasswordObbligatorio() {
         // --- TC_CPW_1: Cambio Password Corretto ---

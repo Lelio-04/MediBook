@@ -29,7 +29,6 @@ class GestionePrenotazioniTest {
     private PrenotazioneRepository prenotazioneRepository;
     @Mock private MedicoRepository medicoRepository;
     @Mock private PazienteRepository pazienteRepository;
-    @Mock private EmailService emailService;
 
     @InjectMocks
     private GestionePrenotazioni gestionePrenotazioni;

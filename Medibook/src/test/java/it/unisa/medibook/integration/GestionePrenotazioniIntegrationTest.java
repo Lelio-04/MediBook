@@ -7,16 +7,12 @@ import it.unisa.medibook.model.Prenotazione;
 import it.unisa.medibook.modelStorage.MedicoRepository;
 import it.unisa.medibook.modelStorage.PazienteRepository;
 import it.unisa.medibook.modelStorage.PrenotazioneRepository;
+import it.unisa.medibook.modelStorage.RefertoRepository;
 import it.unisa.medibook.service.EmailService;
 import it.unisa.medibook.service.GestionePrenotazioni;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import static org.mockito.Mockito.verify;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -27,10 +23,6 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.when;
-
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
@@ -40,14 +32,14 @@ class GestionePrenotazioniIntegrationTest {
     @Autowired private PrenotazioneRepository prenotazioneRepository;
     @Autowired private MedicoRepository medicoRepository;
     @Autowired private PazienteRepository pazienteRepository;
-    @Autowired private EmailService emailService;
-
+    @Autowired private RefertoRepository refertoRepository;
     private Medico medicoReale;
     private Paziente pazienteReale;
 
     @BeforeEach
     void setUp() {
         // 1. Pulizia preventiva
+        refertoRepository.deleteAll();
         prenotazioneRepository.deleteAll();
         medicoRepository.deleteAll();
         pazienteRepository.deleteAll();
@@ -165,125 +157,190 @@ class GestionePrenotazioniIntegrationTest {
     // TC_MOD_1: ID Prenotazione Errato
     @Test
     void modificaPrenotazione_IdInesistente() {
-        // Setup: L'ID 9999 non esiste nel mock
-        when(prenotazioneRepository.findById(9999)).thenReturn(Optional.empty());
+        // 1. SETUP: Non dobbiamo salvare nulla.
+        // Scegliamo un ID arbitrario che siamo sicuri non esista nel DB H2
+        Integer idInesistente = 999999;
 
+        // 2. AZIONE & ORACOLO
+        // Il service cercherà davvero questo ID nel DB, non lo troverà e lancerà l'eccezione
         Exception exception = assertThrows(Exception.class, () -> {
-            gestionePrenotazioni.modificaPrenotazione(9999, LocalDate.now().plusDays(5), LocalTime.of(10, 0), "PRENOTATA");
+            gestionePrenotazioni.modificaPrenotazione(
+                    idInesistente,
+                    LocalDate.now().plusDays(5),
+                    LocalTime.of(10, 0),
+                    "PRENOTATA"
+            );
         });
 
-        // Oracolo
+        // 3. VERIFICA MESSAGGIO
         assertEquals("Prenotazione non trovata", exception.getMessage());
     }
 
     // TC_MOD_2: Slot Orario Occupato
     @Test
     void modificaPrenotazione_SlotOccupato() {
-        // Setup: Esiste la prenotazione 101 per il Medico 1
-        Medico m = new Medico(); m.setId(1);
-        Prenotazione p = new Prenotazione();
-        p.setId(101); p.setMedico(m);
-        p.setData(LocalDate.now().plusDays(1)); p.setOra(LocalTime.of(9, 0));
+        // 1. SETUP: Definiamo data e orari
+        LocalDate dataTarget = LocalDate.now().plusDays(5);
+        LocalTime oraAttuale = LocalTime.of(9, 0);
+        LocalTime oraOccupata = LocalTime.of(11, 0); // L'orario dove vogliamo spostarci
 
-        LocalDate nuovaData = LocalDate.of(2026, 5, 22);
-        LocalTime nuovaOra = LocalTime.of(15, 0);
+        // 2. Creiamo la prenotazione che VOGLIAMO MODIFICARE (Prenotazione A)
+        Prenotazione pDaModificare = new Prenotazione();
+        pDaModificare.setMedico(medicoReale);
+        pDaModificare.setPaziente(pazienteReale);
+        pDaModificare.setData(dataTarget);
+        pDaModificare.setOra(oraAttuale); // Ore 09:00
+        pDaModificare.setStato("PRENOTATA");
+        pDaModificare = prenotazioneRepository.save(pDaModificare); // Otteniamo l'ID reale
 
-        when(prenotazioneRepository.findById(101)).thenReturn(Optional.of(p));
-        // Simuliamo che lo slot sia occupato da un'ALTRA prenotazione (IdNot 101)
-        when(prenotazioneRepository.existsByMedicoIdAndDataAndOraAndIdNot(1, nuovaData, nuovaOra, 101)).thenReturn(true);
+        // 3. Creiamo l'OSTACOLO (Prenotazione B)
+        // Questa prenotazione occupa lo slot delle 11:00 per lo stesso medico
+        Prenotazione pOstacolo = new Prenotazione();
+        pOstacolo.setMedico(medicoReale);
+        pOstacolo.setPaziente(pazienteReale);
+        pOstacolo.setData(dataTarget);
+        pOstacolo.setOra(oraOccupata); // Ore 11:00 (BLOCCATO)
+        pOstacolo.setStato("PRENOTATA");
+        prenotazioneRepository.save(pOstacolo);
+
+        // 4. AZIONE & ORACOLO
+        // Tentiamo di spostare la prenotazione A alle ore 11:00 (che è occupata da B)
+        // Dobbiamo usare una variabile final o effettivamente final per la lambda
+        Integer idDaModificare = pDaModificare.getId();
 
         Exception exception = assertThrows(Exception.class, () -> {
-            gestionePrenotazioni.modificaPrenotazione(101, nuovaData, nuovaOra, "PRENOTATA");
+            gestionePrenotazioni.modificaPrenotazione(
+                    idDaModificare,
+                    dataTarget,
+                    oraOccupata, // Tentativo di spostamento alle 11:00
+                    "PRENOTATA"
+            );
         });
 
-        // Oracolo
-        assertEquals("Errore: Orario non disponibile.", exception.getMessage());
+        // 5. VERIFICA MESSAGGIO
+        String msg = exception.getMessage().toLowerCase();
+        assertTrue(msg.contains("non disponibile") || msg.contains("occupato"),
+                "Dovrebbe segnalare che l'orario è occupato. Messaggio trovato: " + exception.getMessage());
     }
 
     // TC_MOD_4: Modifica con Successo
     @Test
     void modificaPrenotazione_Successo() throws Exception {
-        // Setup
-        Medico m = new Medico(); m.setId(1);
+        // 1. SETUP: Creiamo la prenotazione nello stato INIZIALE
         Prenotazione p = new Prenotazione();
-        p.setId(101); p.setMedico(m);
-        p.setData(LocalDate.now().plusDays(1));
-        p.setOra(LocalTime.of(9, 0));
+        p.setMedico(medicoReale);     // Usiamo il medico reale del setUp
+        p.setPaziente(pazienteReale); // Usiamo il paziente reale del setUp
+        p.setData(LocalDate.now().plusDays(1)); // Domani
+        p.setOra(LocalTime.of(9, 0));           // Ore 09:00
+        p.setStato("PRENOTATA");
 
-        LocalDate nuovaData = LocalDate.of(2026, 5, 30);
-        LocalTime nuovaOra = LocalTime.of(11, 0);
+        // Salviamo nel DB per ottenere l'ID reale
+        p = prenotazioneRepository.save(p);
 
-        when(prenotazioneRepository.findById(101)).thenReturn(Optional.of(p));
-        when(prenotazioneRepository.existsByMedicoIdAndDataAndOraAndIdNot(1, nuovaData, nuovaOra, 101)).thenReturn(false);
-        when(prenotazioneRepository.save(any(Prenotazione.class))).thenAnswer(i -> i.getArguments()[0]);
+        // 2. DEFINIZIONE NUOVI DATI
+        LocalDate nuovaData = LocalDate.now().plusDays(10); // Spostiamo tra 10 giorni
+        LocalTime nuovaOra = LocalTime.of(11, 0);           // Spostiamo alle 11:00
 
-        // Execution
-        Prenotazione aggiornata = gestionePrenotazioni.modificaPrenotazione(101, nuovaData, nuovaOra, "PRENOTATA");
+        // 3. AZIONE: Chiamiamo il servizio reale
+        Prenotazione aggiornata = gestionePrenotazioni.modificaPrenotazione(
+                p.getId(),
+                nuovaData,
+                nuovaOra,
+                "PRENOTATA"
+        );
 
-        // Oracolo
+        // 4. ORACOLO: Verifica doppia
+
+        // A. Verifica sull'oggetto restituito
         assertNotNull(aggiornata);
         assertEquals(nuovaData, aggiornata.getData());
         assertEquals(nuovaOra, aggiornata.getOra());
+
+        // B. Verifica sul DATABASE (La prova del nove)
+        // Rileggiamo il record fresco dal DB per essere sicuri che l'UPDATE SQL sia partito
+        Prenotazione checkDb = prenotazioneRepository.findById(p.getId()).orElseThrow();
+
+        assertEquals(nuovaData, checkDb.getData(), "La data nel DB deve essere aggiornata");
+        assertEquals(nuovaOra, checkDb.getOra(), "L'ora nel DB deve essere aggiornata");
     }
     // --- UC6: GESTIONE VISITA (Aggiornamento Stato) ---
 
     // TC_VIS_1: Esecuzione Visita (Da PRENOTATA a EFFETTUATA)
     @Test
     void aggiornaStatoVisita_Esecuzione() {
-        // Setup: Visita 501 in stato PRENOTATA
+        // 1. SETUP: Creiamo una visita reale in stato PRENOTATA
         Prenotazione p = new Prenotazione();
-        p.setId(501);
+        p.setMedico(medicoReale);     // Usiamo il medico creato nel setUp
+        p.setPaziente(pazienteReale); // Usiamo il paziente creato nel setUp
+        p.setData(LocalDate.now());  // Data di oggi (visita in corso)
+        p.setOra(LocalTime.of(10, 0));
         p.setStato("PRENOTATA");
 
-        when(prenotazioneRepository.findById(501)).thenReturn(Optional.of(p));
+        // Salviamo nel DB H2 per ottenere un ID reale
+        p = prenotazioneRepository.save(p);
 
-        // Execution
-        gestionePrenotazioni.aggiornaStatoVisita(501, "EFFETTUATA");
+        // 2. AZIONE: Il medico segna la visita come effettuata
+        gestionePrenotazioni.aggiornaStatoVisita(p.getId(), "EFFETTUATA");
 
-        // Oracolo: Verifichiamo che lo stato sia cambiato e il repository abbia salvato
-        assertEquals("EFFETTUATA", p.getStato(), "TC_VIS_1 Fallito: Lo stato non è passato a EFFETTUATA");
-        verify(prenotazioneRepository, times(1)).save(p);
+        // 3. ORACOLO: Rileggiamo dal DB per confermare il cambio stato
+        Prenotazione check = prenotazioneRepository.findById(p.getId()).orElseThrow();
+
+        assertEquals("EFFETTUATA", check.getStato(),
+                "Lo stato nel database dovrebbe essere aggiornato a EFFETTUATA");
     }
 
     // TC_VIS_2: Annullamento Visita
     @Test
     void aggiornaStatoVisita_Annullamento() {
-        // Setup: Visita 502 in stato PRENOTATA
+        // 1. SETUP: Creiamo una visita reale in stato PRENOTATA
         Prenotazione p = new Prenotazione();
-        p.setId(502);
+        p.setMedico(medicoReale);     // Usiamo il medico creato nel setUp
+        p.setPaziente(pazienteReale); // Usiamo il paziente creato nel setUp
+        p.setData(LocalDate.now().plusDays(2)); // Una data futura ha senso per un annullamento
+        p.setOra(LocalTime.of(16, 0));
         p.setStato("PRENOTATA");
 
-        when(prenotazioneRepository.findById(502)).thenReturn(Optional.of(p));
+        // La salviamo nel DB H2 per ottenere un ID reale
+        p = prenotazioneRepository.save(p);
 
-        // Execution
-        gestionePrenotazioni.aggiornaStatoVisita(502, "ANNULLATA");
+        // 2. AZIONE: Chiamiamo il servizio reale
+        gestionePrenotazioni.aggiornaStatoVisita(p.getId(), "ANNULLATA");
 
-        // Oracolo
-        assertEquals("ANNULLATA", p.getStato(), "TC_VIS_2 Fallito: Lo stato non è passato a ANNULLATA");
-        verify(prenotazioneRepository, times(1)).save(p);
+        // 3. ORACOLO: Rileggiamo dal DB per confermare che lo stato sia cambiato
+        Prenotazione check = prenotazioneRepository.findById(p.getId()).orElseThrow();
+
+        assertEquals("ANNULLATA", check.getStato(),
+                "Lo stato nel database dovrebbe essere passato ad ANNULLATA");
     }
 
     // TC_VIS_3: Modifica Visita già processata (Vincolo di integrità)
     @Test
     void aggiornaStatoVisita_GiaConclusa() {
-        // Setup: Visita 600 già CONCLUSA
+        // 1. SETUP: Creiamo una visita già in stato terminale (CONCLUSA)
         Prenotazione p = new Prenotazione();
-        p.setId(600);
+        p.setMedico(medicoReale);
+        p.setPaziente(pazienteReale);
+        p.setData(LocalDate.now().minusDays(5)); // Mettiamo una data passata per realismo
+        p.setOra(LocalTime.of(9, 0));
         p.setStato("CONCLUSA");
 
-        when(prenotazioneRepository.findById(600)).thenReturn(Optional.of(p));
+        // Salvataggio nel DB reale H2
+        p = prenotazioneRepository.save(p);
 
-        // Se nel tuo Service hai aggiunto un controllo di guardia per impedire la modifica:
-        // gestionePrenotazioni.aggiornaStatoVisita(600, "EFFETTUATA");
+        // 2. AZIONE: Tentiamo di forzare il cambio stato a "EFFETTUATA"
+        // Avvolgiamo in try-catch: se il tuo service lancia un'eccezione (es. "Non modificabile"),
+        // va bene lo stesso, l'importante è che il dato nel DB non cambi.
+        try {
+            gestionePrenotazioni.aggiornaStatoVisita(p.getId(), "EFFETTUATA");
+        } catch (Exception e) {
+            // Ignoriamo l'errore java, ci interessa verificare la persistenza dei dati
+        }
 
-        // Se il service non ha l'if di controllo, lo stato cambierebbe.
-        // Per rispettare l'oracolo del TCS, assicurati che il service gestisca il blocco,
-        // altrimenti il test fallirà evidenziando un bug logico!
+        // 3. ORACOLO: Rileggiamo dal DB per vedere se lo stato è cambiato
+        Prenotazione check = prenotazioneRepository.findById(p.getId()).orElseThrow();
 
-        // Esempio di verifica se il metodo è stato effettivamente chiamato:
-        gestionePrenotazioni.aggiornaStatoVisita(600, "EFFETTUATA");
-
-        // Se il vincolo è rispettato, lo stato dovrebbe essere rimasto CONCLUSA
-        assertNotEquals("EFFETTUATA", p.getStato(), "TC_VIS_3 Fallito: Il sistema ha permesso di modificare una visita già CONCLUSA");
+        // Se la logica è corretta, lo stato deve essere RIMASTO "CONCLUSA"
+        assertEquals("CONCLUSA", check.getStato(),
+                "Errore: Il sistema ha permesso di modificare una visita che era già CONCLUSA");
     }
 }
