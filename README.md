@@ -1,29 +1,6 @@
 # MediBook
 Progetto realizzato per il corso di Ingegneria del Software - Università degli studi di Salerno 2025/2026
 
-## 🏥 MediBook - Medical Management System
-
-**MediBook** è un'applicazione Web Full-Stack per la gestione di servizi medici. Il progetto utilizza un'architettura moderna separando il Backend (API REST in Java) dal Frontend (Interfaccia Utente in React).
-
----
-
-## 🚀 Tecnologie Utilizzate
-
-### Backend
-* **Java 17+**
-* **Spring Boot 3** (Web, Data JPA)
-* **Hibernate** (ORM)
-* **MySQL Connector**
-* **Maven**
-
-### Frontend
-* **JavaScript**
-
-### Database
-* **MySQL 8.0**
-
----
-
 ## 🛠️ Prerequisiti
 
 * **Java JDK 17** o superiore
@@ -47,20 +24,6 @@ spring.datasource.url=jdbc:mysql://localhost:3306/medibook?useSSL=false&serverTi
 spring.datasource.username=root
 spring.datasource.password=TUA_PASSWORD_QUI
 ```
-
----
-
-# 🏥 MediBook - Frontend Client
-
-Questo è il client interfaccia utente per il progetto **MediBook**, sviluppato in **JavaScript**.
-
----
-
-## 🚀 Tecnologie Frontend
-
-* **JavaScript** 
-
----
 
 ## Accesso al sito
 
