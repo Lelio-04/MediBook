@@ -28,7 +28,7 @@ public class SegreteriaPrenotazioniController {
         Utente utente = (Utente) session.getAttribute("utente");
         if (utente == null || !(utente instanceof SegreteriaPrenotazioni)) return "redirect:/";
 
-        // Il service decide cosa restituire in base ai parametri
+
         model.addAttribute("listaPrenotazioni", gestionePrenotazioni.ricercaPrenotazioni(q, filtro));
         model.addAttribute("filtroAttivo", filtro);
         model.addAttribute("searchKeyword", q);
@@ -49,16 +49,16 @@ public class SegreteriaPrenotazioniController {
         if (utente == null || !"SEGRETERIA".equals(utente.getRuolo())) return "redirect:/";
 
         try {
-            // Caso speciale: se lo stato è CONCLUSA, il service deve preparare la transizione
+
             if ("CONCLUSA".equals(nuovoStato)) {
                 gestionePrenotazioni.modificaPrenotazione(id, nuovaData, nuovaOra, "EFFETTUATA");
                 return "redirect:/segreteria-prenotazioni/referto/nuovo?id=" + id;
             }
 
-            // La logica "Data nel passato" è già dentro gestionePrenotazioni.modificaPrenotazione!
+
             gestionePrenotazioni.modificaPrenotazione(id, nuovaData, nuovaOra, nuovoStato);
 
-            // Invio notifiche delegato (può essere messo dentro modificaPrenotazione o chiamato qui)
+
             if (!"CANCELLATA".equals(nuovoStato)) {
                 gestionePrenotazioni.inviaNotificheModifica(id);
             }
@@ -96,7 +96,7 @@ public class SegreteriaPrenotazioniController {
         if (utente == null || !"SEGRETERIA".equals(utente.getRuolo())) return "redirect:/";
 
         try {
-            // Usiamo il metodo creato per il Medico: riutilizzo del codice!
+
             gestioneReferti.salvaNuovoReferto(prenotazioneId, contenuto);
             redirectAttributes.addFlashAttribute("successo", "Referto salvato!");
         } catch (Exception e) {

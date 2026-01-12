@@ -17,13 +17,13 @@ public class RicercaRestController {
 
     @GetMapping("/api/suggerimenti")
     public List<String> getSuggerimenti(@RequestParam String q) {
-        // Il controller non sa come si creano i suggerimenti, lo chiede al service
+
         return gestioneMedico.getSuggerimentiRicerca(q);
     }
 
     @GetMapping("/api/cerca-medici-json")
     public List<Medico> cercaMediciJson(@RequestParam String q) {
-        // Riutilizziamo la ricerca avanzata definita nel service
+
         return gestioneMedico.ricercaAvanzata(q);
     }
 }

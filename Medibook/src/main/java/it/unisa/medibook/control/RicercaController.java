@@ -16,7 +16,7 @@ import java.util.List;
 public class RicercaController {
 
     @Autowired
-    private GestioneMedico gestioneMedico; // <--- Unico Service di riferimento
+    private GestioneMedico gestioneMedico;
 
     // --- METODO DI RICERCA ---
     @GetMapping("/cerca")
@@ -25,13 +25,13 @@ public class RicercaController {
             return "redirect:/";
         }
 
-        // 1. La logica di pulizia "Dr./Dott." e la query DB sono ora nel Service
+
         List<Medico> risultati = gestioneMedico.ricercaAvanzata(q);
 
-        // 2. Passiamo i risultati alla vista
+
         model.addAttribute("medici", risultati);
 
-        // Manteniamo la query originale per la barra di ricerca dell'utente
+
         model.addAttribute("query", q);
 
         return "risultatiRicerca";
@@ -40,14 +40,14 @@ public class RicercaController {
     // --- DETTAGLI MEDICO E RECENSIONI ---
     @GetMapping("/medico/{id}")
     public String dettagliMedico(@PathVariable Integer id, Model model) {
-        // 1. Recupero Medico tramite Service
+
         Medico medico = gestioneMedico.getMedicoById(id);
         if (medico == null) return "redirect:/";
 
-        // 2. Recupero Recensioni tramite Service
+
         List<Recensione> recensioni = gestioneMedico.getRecensioniPerMedico(id);
 
-        // 3. Calcolo Media tramite Service
+
         double media = gestioneMedico.calcolaMediaVoti(recensioni);
 
         model.addAttribute("medico", medico);

@@ -14,11 +14,9 @@ public interface PrenotazioneRepository extends JpaRepository<Prenotazione, Inte
     // Per il Paziente: vedere le sue visite
     List<Prenotazione> findByPazienteId(Integer pazienteId);
 
-    // CONTROLLO DISPONIBILITÀ (Nuova Prenotazione)
     // "Esiste già una visita con questo medico, in questa data e ora?"
     boolean existsByMedicoIdAndDataAndOra(Integer medicoId, LocalDate data, LocalTime ora);
 
-    // CONTROLLO DISPONIBILITÀ (Modifica Segreteria)
     // "Esiste già una visita... ESCLUDENDO quella che sto modificando (IdNot)?"
     boolean existsByMedicoIdAndDataAndOraAndIdNot(Integer medicoId, LocalDate data, LocalTime ora, Integer id);
     // Cerca tutte le prenotazioni di un medico che hanno uno stato specifico

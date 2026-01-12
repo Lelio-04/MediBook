@@ -21,7 +21,7 @@ public class Prenotazione {
     @Column(nullable = false)
     private String stato;
 
-    // --- Relazioni (Chiavi Esterne) ---
+
 
     @ManyToOne
     @JoinColumn(name = "medico_id", nullable = false)
@@ -31,8 +31,7 @@ public class Prenotazione {
     @JoinColumn(name = "paziente_id", nullable = false)
     private Paziente paziente;
 
-    // --- NUOVA AGGIUNTA: Collegamento al Referto ---
-    // mappedBy = "prenotazione" dice a JPA: "La chiave esterna non è qui, ma nell'altra tabella (Referto)"
+
     @OneToOne(mappedBy = "prenotazione", cascade = CascadeType.ALL)
     private Referto referto;
 
@@ -48,7 +47,7 @@ public class Prenotazione {
         this.recensione = recensione;
     }
 
-    // --- Costruttori ---
+
 
     public Prenotazione() {
     }

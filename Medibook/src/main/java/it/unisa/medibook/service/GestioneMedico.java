@@ -29,17 +29,16 @@ public class GestioneMedico {
 
     // Recupera un medico specifico
     public Medico getMedicoById(Integer id) {
-        // Converto in Long perché la tua repository probabilmente usa Long come ID
         return medicoRepository.findById(Long.valueOf(id)).orElse(null);
     }
-    // 2. LOGICA DI RICERCA (Snellisce RicercaController)
+
     public List<Medico> ricercaAvanzata(String query) {
-        // Logica OCL/Business: Rimuoviamo prefissi che disturbano la ricerca nel DB
+
         String queryPulita = query.replaceAll("(?i)^dr\\.?\\s+|^dott\\.?\\s+", "");
         return medicoRepository.cercaGlobale(queryPulita);
     }
 
-    // 3. LOGICA RECENSIONI E MEDIA (Snellisce RicercaController)
+
     public List<Recensione> getRecensioniPerMedico(Integer medicoId) {
         return recensioneRepository.findByMedicoId(medicoId);
     }

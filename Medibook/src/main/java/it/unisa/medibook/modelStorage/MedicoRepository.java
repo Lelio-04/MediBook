@@ -12,11 +12,11 @@ import java.util.List;
 public interface MedicoRepository extends JpaRepository<Medico, Long> {
 
     @Query("SELECT m FROM Medico m WHERE " +
-            "LOWER(m.nome) LIKE LOWER(CONCAT('%', :q, '%')) OR " + // Cerca solo nel nome
-            "LOWER(m.cognome) LIKE LOWER(CONCAT('%', :q, '%')) OR " + // Cerca solo nel cognome
-            "LOWER(m.specializzazione) LIKE LOWER(CONCAT('%', :q, '%')) OR " + // Cerca spec
-            "LOWER(CONCAT(m.nome, ' ', m.cognome)) LIKE LOWER(CONCAT('%', :q, '%')) OR " + // Cerca "Mario Rossi"
-            "LOWER(CONCAT(m.cognome, ' ', m.nome)) LIKE LOWER(CONCAT('%', :q, '%'))" // Cerca "Rossi Mario"
+            "LOWER(m.nome) LIKE LOWER(CONCAT('%', :q, '%')) OR " +
+            "LOWER(m.cognome) LIKE LOWER(CONCAT('%', :q, '%')) OR " +
+            "LOWER(m.specializzazione) LIKE LOWER(CONCAT('%', :q, '%')) OR " +
+            "LOWER(CONCAT(m.nome, ' ', m.cognome)) LIKE LOWER(CONCAT('%', :q, '%')) OR " +
+            "LOWER(CONCAT(m.cognome, ' ', m.nome)) LIKE LOWER(CONCAT('%', :q, '%'))"
     )
     List<Medico> cercaGlobale(@Param("q") String q);
 }

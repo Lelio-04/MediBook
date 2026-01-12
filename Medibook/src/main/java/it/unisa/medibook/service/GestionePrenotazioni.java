@@ -30,7 +30,6 @@ public class GestionePrenotazioni {
     @Autowired
     private EmailService emailService;
 
-    // --- METODI DI RICERCA ---
 
     public Prenotazione getPrenotazioneById(Integer id) {
         return prenotazioneRepository.findById(id).orElse(null);
@@ -41,7 +40,6 @@ public class GestionePrenotazioni {
     }
 
 
-    // --- LOGICA DI FILTRAGGIO (Per Dashboard Paziente) ---
 
     public List<Prenotazione> getVisiteFuture(Integer pazienteId) {
         return prenotazioneRepository.findByPazienteId(pazienteId).stream()
@@ -57,7 +55,6 @@ public class GestionePrenotazioni {
                 .collect(Collectors.toList());
     }
 
-    // --- GESTIONE PRENOTAZIONI (Creazione e Modifica) ---
 
     @Transactional
     public Prenotazione nuovaPrenotazione(Integer pazienteId, Integer medicoId, LocalDate data, LocalTime ora) throws Exception {
@@ -113,20 +110,22 @@ public class GestionePrenotazioni {
     @Transactional
     public void aggiornaStatoVisita(Integer id, String nuovoStato) {
         prenotazioneRepository.findById(id).ifPresent(p -> {
+            // --- FIX: Aggiungi questo controllo di sicurezza ---
+            if ("CONCLUSA".equals(p.getStato()) || "ANNULLATA".equals(p.getStato())) {
+                // Se la visita è già chiusa, non facciamo nulla (o lanciamo un'eccezione)
+                return;
+            }
+
             p.setStato(nuovoStato);
             prenotazioneRepository.save(p);
         });
     }
 
-    // --- CALENDARIO E TURNI ---
 
     public List<Prenotazione> visualizzaVisitePerCalendario(Integer medicoId) {
         return prenotazioneRepository.findByMedicoIdAndStato(medicoId, "PRENOTATA");
     }
 
-    /**
-     * Prepara i dati degli eventi in un formato compatibile con FullCalendar (JSON-ready)
-     */
     public List<Map<String, Object>> getEventiCalendarioJSON(Integer medicoId) {
         List<Prenotazione> visite = visualizzaVisitePerCalendario(medicoId);
         List<Map<String, Object>> eventi = new ArrayList<>();
@@ -231,7 +230,6 @@ public class GestionePrenotazioni {
             String nomePaziente = p.getPaziente().getNome() + " " + p.getPaziente().getCognome();
             String nomeMedico = p.getMedico().getCognome();
 
-            // 1. INVIO AL PAZIENTE
             try {
                 String emailPaziente = p.getPaziente().getEmail();
                 if (emailPaziente != null && !emailPaziente.isEmpty()) {
@@ -250,7 +248,7 @@ public class GestionePrenotazioni {
                 System.err.println("Errore invio email paziente: " + e.getMessage());
             }
 
-            // 2. INVIO AL MEDICO (NUOVO)
+
             try {
                 String emailMedico = p.getMedico().getEmail();
                 // Controlliamo che il medico abbia una mail

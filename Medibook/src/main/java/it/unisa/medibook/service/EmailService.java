@@ -13,7 +13,6 @@ public class EmailService {
     @Autowired
     private JavaMailSender mailSender;
 
-    // 1. MODIFICA APPUNTAMENTO (Per Segreteria -> Paziente)
     public void inviaEmailModifica(String destinatario, String oggetto,
                                    String nomePaziente, String nomeMedico,
                                    String nuovaData, String nuovaOra) {
@@ -36,7 +35,6 @@ public class EmailService {
         }
     }
 
-    // 2. CONFERMA PRENOTAZIONE (Per Paziente -> Paziente)
     public void inviaEmailConferma(String destinatario, String nomePaziente,
                                    String nomeMedico, String data, String ora) {
         try {
@@ -90,7 +88,6 @@ public class EmailService {
         }
     }
 
-    // 3. BENVENUTO E CREDENZIALI (Per Segreteria -> Nuovo Paziente)
     public void inviaEmailBenvenuto(String destinatario, String nome, String cognome, String passwordTemp) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
@@ -155,7 +152,6 @@ public class EmailService {
         }
     }
 
-    // --- Helper Privato per HTML Modifica ---
     private String costruisciHtmlModifica(String nome, String medico, String data, String ora) {
         return """
         <!DOCTYPE html>

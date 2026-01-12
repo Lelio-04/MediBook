@@ -4,7 +4,7 @@ package it.unisa.medibook.model;
 import jakarta.persistence.*;
 
 @Entity
-@DiscriminatorValue("SEG_PRENOTAZIONI") // Valore diverso nel DB
+@DiscriminatorValue("SEG_PRENOTAZIONI")
 public class SegreteriaPrenotazioni extends Utente {
 
     public SegreteriaPrenotazioni() {

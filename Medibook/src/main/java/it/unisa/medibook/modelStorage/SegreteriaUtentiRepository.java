@@ -5,5 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 
 public interface SegreteriaUtentiRepository extends JpaRepository<SegreteriaUtenti, Integer> {
-    // Trova solo le segretarie addette agli utenti
+
 }

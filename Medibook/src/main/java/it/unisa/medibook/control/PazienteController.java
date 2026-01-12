@@ -33,7 +33,7 @@ public class PazienteController {
     @Autowired
     private EmailService emailService;
 
-    // --- DASHBOARD ---
+
     @GetMapping("")
     public String dashboardPaziente(HttpSession session, Model model) {
         Utente utente = (Utente) session.getAttribute("utente");
@@ -42,14 +42,14 @@ public class PazienteController {
             return "redirect:/";
         }
 
-        // CORREZIONE QUI: Controllo e Casting
-        if (utente instanceof Paziente) {
-            Paziente p = (Paziente) utente; // <--- Casting necessario
 
-            // Ora puoi chiamare getNome() perché 'p' è di tipo Paziente
+        if (utente instanceof Paziente) {
+            Paziente p = (Paziente) utente;
+
+
             model.addAttribute("nomePaziente", p.getNome() + " " + p.getCognome());
 
-            // Passiamo l'ID al service
+
             model.addAttribute("visiteFuture", gestionePrenotazioni.getVisiteFuture(p.getId()));
             model.addAttribute("storicoVisite", gestionePrenotazioni.getVisiteStorico(p.getId()));
         }
@@ -59,7 +59,7 @@ public class PazienteController {
         return "paziente";
     }
 
-    // --- PRENOTAZIONE ---
+
     @PostMapping("/prenota")
     public String prenotaVisita(@RequestParam Integer idMedico,
                                 @RequestParam String data,
@@ -74,17 +74,17 @@ public class PazienteController {
             LocalDate dataL = LocalDate.parse(data);
             LocalTime oraL = LocalTime.parse(ora);
 
-            // 1. Chiamata al Service
+
             gestionePrenotazioni.nuovaPrenotazione(utente.getId(), idMedico, dataL, oraL);
 
-            // 2. Invio Email (Gestito tramite helper privato per pulizia)
+
             inviaEmailConfermaHelper((Paziente) utente, idMedico, dataL, oraL);
 
             redirectAttributes.addAttribute("successo", "true");
 
         } catch (Exception e) {
             redirectAttributes.addAttribute("errore", e.getMessage());
-            // Manteniamo i dati inseriti per la UX
+
             redirectAttributes.addAttribute("prevIdMedico", idMedico);
             try {
                 Medico m = gestioneMedico.getMedicoById(idMedico);
@@ -95,7 +95,6 @@ public class PazienteController {
         return "redirect:/paziente";
     }
 
-    // --- REFERTO ---
     @GetMapping("/referto")
     public String vediReferto(@RequestParam(name = "idVisita") Integer idVisita, HttpSession session, Model model) {
         Utente utente = (Utente) session.getAttribute("utente");
@@ -105,7 +104,6 @@ public class PazienteController {
 
         if (referto == null) return "redirect:/paziente?errore=RefertoNonTrovato";
 
-        // Controllo di sicurezza
         if (!referto.getPrenotazione().getPaziente().getId().equals(utente.getId())) {
             return "redirect:/paziente?errore=AccessoNegato";
         }
@@ -114,20 +112,17 @@ public class PazienteController {
         return "paziente_visualizza_referto";
     }
 
-    // --- PROFILO (VISUALIZZA) ---
     @GetMapping("/profilo")
     public String vediProfilo(HttpSession session, Model model) {
         Utente utente = (Utente) session.getAttribute("utente");
         if (utente == null || !(utente instanceof Paziente)) return "redirect:/";
 
-        // Usiamo il service per recuperare il paziente aggiornato (non la repo)
         Paziente p = gestioneUtenza.getPazienteById(utente.getId());
         model.addAttribute("paziente", p);
 
         return "paziente_profilo";
     }
 
-    // --- PROFILO (SALVA MODIFICHE) ---
     @PostMapping("/profilo/salva")
     public String salvaProfilo(@RequestParam String telefono,
                                @RequestParam String indirizzo,
@@ -139,10 +134,8 @@ public class PazienteController {
         if (utente == null || !(utente instanceof Paziente)) return "redirect:/";
 
         try {
-            // TUTTA LA LOGICA (Hash password, set dati, save) è ora qui dentro:
             Paziente pAggiornato = gestioneUtenza.aggiornaProfiloPaziente(utente.getId(), telefono, indirizzo, nuovaPassword);
 
-            // Aggiorna la sessione con i nuovi dati
             session.setAttribute("utente", pAggiornato);
 
             redirectAttributes.addFlashAttribute("successo", "Profilo aggiornato con successo!");
@@ -154,7 +147,6 @@ public class PazienteController {
         return "redirect:/paziente/profilo";
     }
 
-    // --- RECENSIONE ---
     @PostMapping("/recensione/salva")
     public String salvaRecensione(@RequestParam Long idPrenotazione,
                                   @RequestParam int voto,
@@ -166,7 +158,6 @@ public class PazienteController {
         if (!(utente instanceof Paziente)) return "redirect:/accedi";
 
         try {
-            // Delega completa al service
             gestionePrenotazioni.salvaRecensione(idPrenotazione, voto, commento, (Paziente) utente);
             redirectAttributes.addAttribute("successo", "RecensioneInviata");
         } catch (Exception e) {
@@ -176,7 +167,6 @@ public class PazienteController {
         return "redirect:/paziente";
     }
 
-    // --- API AJAX ---
     @GetMapping("/api/giorni-lavoro")
     @ResponseBody
     public List<Integer> getGiorniLavoro(@RequestParam Integer medicoId) {
@@ -189,10 +179,6 @@ public class PazienteController {
         // Parsing minimo necessario per chiamare il service
         return gestionePrenotazioni.getOrariLiberi(medicoId, LocalDate.parse(data));
     }
-
-    // =================================================================================
-    // PRIVATE HELPERS (Per tenere puliti i metodi pubblici)
-    // =================================================================================
 
     private void inviaEmailConfermaHelper(Paziente p, Integer idMedico, LocalDate data, LocalTime ora) {
         try {

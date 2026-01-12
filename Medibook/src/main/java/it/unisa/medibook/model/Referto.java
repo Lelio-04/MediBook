@@ -12,7 +12,7 @@ public class Referto {
     private Integer id;
 
     @Column(nullable = false)
-    private LocalDateTime dataCaricamento; // Cambiato in LocalDateTime
+    private LocalDateTime dataCaricamento;
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String contenuto;
@@ -24,14 +24,14 @@ public class Referto {
     public Referto() {
     }
 
-    // Costruttore AGGIORNATO: ora chiede anche la Prenotazione
+
     public Referto(String contenuto, Prenotazione prenotazione) {
         this.contenuto = contenuto;
         this.prenotazione = prenotazione;
-        this.dataCaricamento = LocalDateTime.now(); // Imposta l'ora attuale in automatico
+        this.dataCaricamento = LocalDateTime.now();
     }
 
-    // --- Getter e Setter ---
+
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }
 

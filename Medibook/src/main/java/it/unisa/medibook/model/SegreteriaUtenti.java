@@ -3,7 +3,7 @@ package it.unisa.medibook.model;
 import jakarta.persistence.*;
 
 @Entity
-@DiscriminatorValue("SEG_UTENTI") // Questo valore viene scritto nel DB
+@DiscriminatorValue("SEG_UTENTI")
 public class SegreteriaUtenti extends Utente {
 
     public SegreteriaUtenti() {
@@ -32,5 +32,4 @@ public class SegreteriaUtenti extends Utente {
     public void setCognome(String cognome) {
         this.cognome = cognome;
     }
-    // Qui potresti aggiungere permessi specifici se servissero
 }

@@ -25,17 +25,16 @@ public class Recensione {
     @JoinColumn(name = "paziente_id")
     private Paziente paziente;
 
-    // --- MODIFICA QUI: Colleghiamo a PRENOTAZIONE ---
     @OneToOne
     @JoinColumn(name = "prenotazione_id")
     private Prenotazione prenotazione;
 
-    // Costruttore vuoto (obbligatorio per JPA)
+
     public Recensione() {
         this.dataInserimento = LocalDate.now();
     }
 
-    // Costruttore utile
+
     public Recensione(int voto, String commento, Medico medico, Paziente paziente) {
         this.voto = voto;
         this.commento = commento;
@@ -44,7 +43,7 @@ public class Recensione {
         this.dataInserimento = LocalDate.now();
     }
 
-    // --- GETTER E SETTER ---
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public int getVoto() { return voto; }

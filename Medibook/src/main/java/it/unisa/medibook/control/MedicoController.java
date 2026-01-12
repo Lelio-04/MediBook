@@ -22,7 +22,7 @@ public class MedicoController {
     public String dashboardMedico(HttpSession session, Model model) {
         Utente utente = (Utente) session.getAttribute("utente");
 
-        // Verifica ruolo e tipo
+
         if (utente == null || !"MEDICO".equals(utente.getRuolo())) return "redirect:/";
 
         if (utente instanceof Medico) {
@@ -41,7 +41,7 @@ public class MedicoController {
         if (utente == null || !"MEDICO".equals(utente.getRuolo())) return "redirect:/login";
 
         try {
-            // Usiamo utente.getId() che è ereditato dalla classe base Utente
+
             var eventi = gestionePrenotazioni.getEventiCalendarioJSON(utente.getId());
             model.addAttribute("eventiJson", new ObjectMapper().writeValueAsString(eventi));
         } catch (Exception e) {
@@ -103,7 +103,6 @@ public class MedicoController {
 
         Referto referto = gestioneReferti.visualizzaReferto(prenotazioneId);
 
-        // Controllo proprietà referto
         if (referto != null && !referto.getPrenotazione().getMedico().getId().equals(utente.getId())) {
             return "redirect:/medico?errore=AccessoNegato";
         }

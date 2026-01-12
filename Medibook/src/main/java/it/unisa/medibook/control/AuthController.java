@@ -43,26 +43,24 @@ public class AuthController {
                                HttpSession session,
                                Model model) {
 
-        // 1. DELEGA AL SERVICE: "Dammi l'utente se le credenziali sono giuste"
         Utente utente = gestioneUtenza.login(email, password);
 
         if (utente != null) {
             session.setAttribute("utente", utente);
 
-            // --- CONTROLLO PRIMO ACCESSO (Logica di Routing) ---
-            // Nota: Controlliamo la password IN CHIARO qui perché il service ci ha detto che è valida.
-            // Se la password valida è quella di default, forziamo il cambio.
+            // --- CONTROLLO PRIMO ACCESSO---
+
             if (password.equals("Medibook123")) {
                 return "redirect:/cambio-password-obbligatorio";
             }
 
-            // --- LOGICA DI REINDIRIZZAMENTO (Routing) ---
+
             if (utente instanceof SegreteriaUtenti) return "redirect:/segreteria-utenti/dashboard";
             if (utente instanceof SegreteriaPrenotazioni) return "redirect:/segreteria-prenotazioni/dashboard";
 
             String ruolo = utente.getRuolo().toUpperCase();
 
-            // Gestione redirect pendente (es. stavo prenotando e mi hai chiesto il login)
+
             if (redirect != null && !redirect.trim().isEmpty() && !redirect.equals("null")) {
                 if ("PAZIENTE".equals(ruolo)) return "redirect:" + redirect;
             }
@@ -103,7 +101,6 @@ public class AuthController {
             @RequestParam String email, @RequestParam String password,
             Model model) {
 
-        // Creiamo il DTO/Oggetto base
         Paziente p = new Paziente();
         p.setNome(nome);
         p.setCognome(cognome);
@@ -112,7 +109,6 @@ public class AuthController {
         p.setEmail(email);
 
         try {
-            // DELEGA TOTALE AL SERVICE (Incluso Hash e Controlli Duplicati)
             gestioneUtenza.registraPaziente(p, password);
 
             model.addAttribute("messaggio", "Registrazione completata! Ora puoi accedere.");
@@ -141,7 +137,7 @@ public class AuthController {
         Utente utenteSessione = (Utente) session.getAttribute("utente");
         if (utenteSessione == null) return "redirect:/accedi";
 
-        // 1. Validazione base (UI Logic)
+
         if (!nuovaPassword.equals(confermaPassword)) {
             model.addAttribute("errore", "Le due password non coincidono.");
             return "cambio_password_obbligatorio";
@@ -153,13 +149,13 @@ public class AuthController {
         }
 
         try {
-            // 2. Delega al Service (Business Logic & DB)
+
             Utente utenteAggiornato = gestioneUtenza.cambioPasswordObbligatorio(utenteSessione.getId(), nuovaPassword);
 
             // 3. Aggiorna sessione
             session.setAttribute("utente", utenteAggiornato);
 
-            // 4. Redirect
+
             String ruolo = utenteAggiornato.getRuolo().toUpperCase();
             return switch (ruolo) {
                 case "PAZIENTE" -> "redirect:/paziente?msg=PasswordAggiornata";

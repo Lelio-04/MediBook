@@ -20,7 +20,7 @@ public class GestioneUtenza {
     private UtenteRepository utenteRepository;
 
     @Autowired
-    private PazienteRepository pazienteRepository; // <--- AGGIUNTA 1: Ci serve per salvare i pazienti
+    private PazienteRepository pazienteRepository;
 
     @Autowired
     private PrenotazioneRepository prenotazioneRepository;
@@ -36,11 +36,11 @@ public class GestioneUtenza {
         Paziente p = pazienteRepository.findById(idUtente)
                 .orElseThrow(() -> new Exception("Utente non trovato"));
 
-        // Aggiorna dati base
+
         p.setTelefono(telefono);
         p.setIndirizzo(indirizzo);
 
-        // Gestione cambio password sicura
+
         if (nuovaPassword != null && !nuovaPassword.trim().isEmpty()) {
             p.setPassword(passwordService.hash(nuovaPassword));
         }
@@ -48,33 +48,46 @@ public class GestioneUtenza {
         return pazienteRepository.save(p);
     }
 
-    /**
-     * AGGIUNTA 2: Metodo per registrare un nuovo paziente.
-     * Imposta il ruolo fisso e salva nel DB.
-     */
-    // Assicurati di avere @Autowired private MedicoRepository medicoRepository;
+
     public Utente login(String email, String password) {
         Utente utente = utenteRepository.findByEmail(email).orElse(null);
 
-        // Verifica: Esiste? La password è corretta?
+
         if (utente != null && passwordService.check(password, utente.getPassword())) {
             return utente;
         }
         return null;
     }
 
-    // --- 2. REGISTRAZIONE PAZIENTE (Hash incluso) ---
+
     @Transactional
     public void registraPaziente(Paziente p, String passwordInChiaro) throws Exception {
-        // Controllo duplicati
+
+
+        if (p.getCodiceFiscale() == null || p.getCodiceFiscale().length() != 16) {
+            throw new Exception("Codice Fiscale non valido");
+        }
+
+
+        if (p.getEmail() == null || !p.getEmail().contains("@") || !p.getEmail().contains(".")) {
+            throw new Exception("Formato email non valido");
+        }
+
+
+        if (passwordInChiaro == null || passwordInChiaro.length() < 8) {
+            throw new Exception("Lunghezza Password non valida (min. 8 caratteri)");
+        }
+
+
         if (utenteRepository.findByEmail(p.getEmail()).isPresent()) {
             throw new Exception("Email già presente nel sistema.");
         }
-        if (pazienteRepository.existsByCodiceFiscale(p.getCodiceFiscale())) { // Assicurati di avere questo metodo nella repo o fallo a mano
+
+
+        if (pazienteRepository.findByCodiceFiscale(p.getCodiceFiscale()) != null) {
             throw new Exception("Codice Fiscale già presente.");
         }
 
-        // Imposta sicurezza
         p.setRuolo("PAZIENTE");
         p.setPassword(passwordService.hash(passwordInChiaro));
 
@@ -107,9 +120,8 @@ public class GestioneUtenza {
         pazienteRepository.deleteById(id);
     }
 
-    /**
-     * Gestisce sia la creazione che la modifica di un paziente dalla segreteria
-     */
+
+    // Gestisce sia la creazione che la modifica di un paziente dalla segreteria
     @Transactional
     public void salvaOAggiornaPaziente(Paziente p) throws Exception {
         if (p.getId() == null) {
@@ -120,10 +132,8 @@ public class GestioneUtenza {
 
             pazienteRepository.save(p);
 
-            // Invio Email (può rimanere qui o essere delegato)
             emailService.inviaEmailBenvenuto(p.getEmail(), p.getNome(), p.getCognome(), passwordProvvisoria);
         } else {
-            // MODIFICA ESISTENTE
             Paziente esistente = pazienteRepository.findById(p.getId())
                     .orElseThrow(() -> new Exception("Paziente non trovato"));
 

@@ -17,18 +17,8 @@ public class GestioneReferti {
     private RefertoRepository refertoRepository;
 
     @Autowired
-    private PrenotazioneRepository prenotazioneRepository; // <--- Aggiunto per aggiornare lo stato
+    private PrenotazioneRepository prenotazioneRepository;
 
-    /**
-     * Operazione: caricaReferto(r: Referto, p: Prenotazione): Boolean
-     * * Implementa i vincoli OCL dell'ODD:
-     * 1. Pre: r e p non nulli
-     * 2. Pre: p.stato deve essere 'EFFETTUATA'
-     * 3. Post: r è associato a p e salvato
-     * 4. Post: p passa allo stato 'CONCLUSA'
-     */
-
-    // Metodo di lettura
     public Referto visualizzaReferto(Integer prenotazioneId) {
         return refertoRepository.findByPrenotazioneId(prenotazioneId);
     }
@@ -37,14 +27,24 @@ public class GestioneReferti {
         Prenotazione p = prenotazioneRepository.findById(prenotazioneId)
                 .orElseThrow(() -> new Exception("Prenotazione non trovata"));
 
+
+
+        if (!"EFFETTUATA".equals(p.getStato())) {
+            throw new Exception("Devi prima impostare la visita come Effettuata");
+        }
+
+        // 2. Controllo Contenuto Vuoto (TC_REF_2)
+        if (contenuto == null || contenuto.trim().isEmpty()) {
+            throw new Exception("Il contenuto del referto è obbligatorio");
+        }
+
         Referto r = new Referto();
         r.setContenuto(contenuto);
-        r.setDataCaricamento(LocalDateTime.now());
+        r.setDataCaricamento(java.time.LocalDateTime.now());
         r.setPrenotazione(p);
 
         refertoRepository.save(r);
 
-        // Aggiorniamo anche lo stato della prenotazione a CONCLUSA
         p.setStato("CONCLUSA");
         prenotazioneRepository.save(p);
     }

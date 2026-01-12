@@ -1,9 +1,9 @@
 package it.unisa.medibook.model;
 
-import jakarta.persistence.*; // Usa javax.persistence se hai una versione vecchia di Spring
+import jakarta.persistence.*;
 
 @Entity
-@Inheritance(strategy = InheritanceType.JOINED) // FONDAMENTALE: Crea la strategia per le sottoclassi
+@Inheritance(strategy = InheritanceType.JOINED)
 @Table(name = "utente")
 public class Utente {
 
@@ -17,24 +17,22 @@ public class Utente {
     @Column(nullable = false)
     private String password;
 
-    // Questo campo serve a distinguere chi si è loggato (es. "MEDICO", "PAZIENTE", "SEGRETERIA")
+
     @Column(nullable = false)
     private String ruolo;
 
-    // --- Costruttori ---
 
-    // Costruttore vuoto (Obbligatorio per JPA)
     public Utente() {
     }
 
-    // Costruttore con parametri (Utile per creare nuovi oggetti rapidamente)
+
     public Utente(String email, String password, String ruolo) {
         this.email = email;
         this.password = password;
         this.ruolo = ruolo;
     }
 
-    // --- Getter e Setter (Manuali) ---
+
 
     public Integer getId() {
         return id;
@@ -67,8 +65,6 @@ public class Utente {
     public void setRuolo(String ruolo) {
         this.ruolo = ruolo;
     }
-
-    // --- ToString (Opzionale, utile per il debug) ---
 
     @Override
     public String toString() {

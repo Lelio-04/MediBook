@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "paziente")
-// JPA sa già che deve collegarsi a 'utente' grazie all'ereditarietà
+
 public class Paziente extends Utente {
 
     @Column(nullable = false, unique = true)
@@ -19,13 +19,13 @@ public class Paziente extends Utente {
     private String indirizzo;
     private String telefono;
 
-    // --- Costruttori ---
+
 
     public Paziente() {
-        super(); // Chiama il costruttore di Utente
+        super();
     }
 
-    // --- Getter e Setter ---
+
 
     public String getCodiceFiscale() {
         return codiceFiscale;
